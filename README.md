@@ -4,7 +4,7 @@ A Python SDK for ResinKit.
 
 ## Requirements
 
-- Python 3.7+
+- Python 3.9+
 - Poetry for dependency management
 
 ## Installation

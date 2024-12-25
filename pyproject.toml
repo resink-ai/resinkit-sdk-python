@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{ include = "resinkit" }]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.9"
 pandas = "^2.0.0"
 flink-sql-gateway-api = "1.19.0"
 
