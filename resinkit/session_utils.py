@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from flink_gateway_api.models import FetchResultsResponseBody, ResultType, RowKind
+from flink_gateway_api.types import UNSET
 
 logger = logging.getLogger(__name__)
 
@@ -12,14 +13,15 @@ def map_flink_to_pandas_dtype(flink_type: str) -> str:
     """
     Map Flink SQL types to pandas dtypes
     """
+    # see https://pandas.pydata.org/docs/user_guide/basics.html#basics-dtypes
     type_mapping = {
         'INTEGER': 'Int64',
         'BIGINT': 'Int64',
         'SMALLINT': 'Int16',
         'TINYINT': 'Int8',
-        'FLOAT': 'float32',
-        'DOUBLE': 'float64',
-        'DECIMAL': 'float64',
+        'FLOAT': 'Float32',
+        'DOUBLE': 'Float64',
+        'DECIMAL': 'Float64',
         'BOOLEAN': 'boolean',
         'CHAR': 'string',
         'VARCHAR': 'string',
@@ -69,6 +71,7 @@ class FetchResultData:
     columns: List[Dict[str, Any]] | None
     data: List[Any] | None
     eos: bool
+    next_url: str | None = None
 
 
 def get_fetch_result_data(response: FetchResultsResponseBody) -> FetchResultData:
@@ -79,13 +82,16 @@ def get_fetch_result_data(response: FetchResultsResponseBody) -> FetchResultData
     Returns: FetchResultData object
     """
     eos = response.result_type == ResultType.EOS
-    res_dict = response.to_dict()
+    next_url = None
+    if response.next_result_uri is not UNSET:
+        next_url = response.next_result_uri
 
+    res_dict = response.to_dict()
     for row in res_dict.get('results', {}).get('data', []):
         if row['kind'] == RowKind.INSERT:
             cols = res_dict['results'].get('columns') or res_dict['results'].get('columnInfos', [])
-            return FetchResultData(columns=cols, data=row.get('fields', []), eos=eos)
-    return FetchResultData(columns=None, data=None, eos=eos)
+            return FetchResultData(columns=cols, data=row.get('fields', []), eos=eos, next_url=next_url)
+    return FetchResultData(columns=None, data=None, eos=eos, next_url=next_url)
 
 
 def get_execute_statement_request(
