@@ -71,7 +71,7 @@ class TestFetchResultsAsyncGen(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(results), 1)  # Should only get one result with data
 
             # Verify the data in the result
-            self.assertEqual(results[0].data, [23, "Alice Liddel"])
+            self.assertEqual(results[0].data[0], [23, "Alice Liddel"])
             self.assertEqual(len(results[0].columns), 2)
             self.assertEqual(results[0].columns[0]["name"], "age")
             self.assertEqual(results[0].columns[1]["name"], "name")

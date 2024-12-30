@@ -44,6 +44,10 @@ def create_dataframe(data: List[List[Any]], columns: List[Dict[str, Any]]) -> pd
     Returns:
         pandas.DataFrame: DataFrame with proper data types
     """
+    if not columns and not data:
+        return pd.DataFrame()
+    if not columns and data:
+        return pd.DataFrame(data)
     if not data:
         # Create empty DataFrame with proper columns if no data
         df = pd.DataFrame(columns=[col['name'] for col in columns])
@@ -68,30 +72,47 @@ def create_dataframe(data: List[List[Any]], columns: List[Dict[str, Any]]) -> pd
 
 @dataclass
 class FetchResultData:
-    columns: List[Dict[str, Any]] | None
-    data: List[Any] | None
+    columns: List[Dict[str, Any]]
+    data: List[List[Any]]
     eos: bool
     next_url: str | None = None
 
+    @staticmethod
+    def result_ok():
+        return FetchResultData(columns=[{
+            'name': 'result',
+            'logicalType': {
+                'type': 'VARCHAR',
+                'nullable': True,
+                'length': 2147483647,
+            },
+            'comment': None,
+        }], data=[['OK']], eos=True, next_url=None)
 
-def get_fetch_result_data(response: FetchResultsResponseBody) -> FetchResultData:
+
+def get_fetch_result_data(response: FetchResultsResponseBody | None) -> FetchResultData:
     """
     Extract columns and data from the result
     Args:
         response: FetchResultsResponseBody object
     Returns: FetchResultData object
     """
+    if not response:
+        return FetchResultData(columns=[], data=[], eos=True, next_url=None)
     eos = response.result_type == ResultType.EOS
     next_url = None
     if response.next_result_uri is not UNSET:
         next_url = response.next_result_uri
 
-    res_dict = response.to_dict()
-    for row in res_dict.get('results', {}).get('data', []):
+    if response.results is UNSET:
+        return FetchResultData(columns=[], data=[], eos=eos, next_url=next_url)
+    res_results = response.results.to_dict()
+    cols = res_results.get('columns') or res_results.get('columnInfos', [])
+    data = []
+    for row in res_results.get('data', []):
         if row['kind'] == RowKind.INSERT:
-            cols = res_dict['results'].get('columns') or res_dict['results'].get('columnInfos', [])
-            return FetchResultData(columns=cols, data=row.get('fields', []), eos=eos, next_url=next_url)
-    return FetchResultData(columns=None, data=None, eos=eos, next_url=next_url)
+            data.append(row.get('fields', []))
+    return FetchResultData(columns=cols, data=data, eos=eos, next_url=next_url)
 
 
 def get_execute_statement_request(
