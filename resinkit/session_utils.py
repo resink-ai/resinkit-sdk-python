@@ -1,9 +1,13 @@
+import asyncio
 from dataclasses import dataclass
 import logging
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any, Dict, List, Optional, AsyncGenerator, Generator
 
 import pandas as pd
-from flink_gateway_api.models import FetchResultsResponseBody, ResultType, RowKind
+from flink_gateway_api import Client, errors
+from flink_gateway_api.api.default import fetch_results
+from flink_gateway_api.models import FetchResultsResponseBody, ResultType, RowKind, RowFormat
 from flink_gateway_api.types import UNSET
 
 logger = logging.getLogger(__name__)
@@ -130,3 +134,139 @@ def get_execute_statement_request(
     if execute_timeout:
         request_dict["execution_timeout"] = execute_timeout
     return request_dict
+
+
+async def fetch_results_async_gen(
+        client: Client,
+        session_handle: str,
+        operation_handle: str,
+        row_format: RowFormat = RowFormat.JSON,
+        poll_interval_secs: float = 0.1,
+        max_poll_secs: Optional[float] = None,
+        n_row_limit: Optional[int] = None,
+) -> AsyncGenerator[FetchResultData, None]:
+    """
+    Fetch all results from Flink SQL Gateway until EOS is reached using async client
+
+    Args:
+        client: Async client instance
+        session_handle: Session handle string
+        operation_handle: Operation handle string
+        row_format: Format for the returned rows (JSON or CSV)
+        poll_interval_secs: Time to wait between polling
+        max_poll_secs: Maximum time to poll
+        n_row_limit: Maximum number of rows to fetch
+
+    YieldType:
+        tuple: (list of all data rows, list of column definitions)
+    SendType: None
+    ReturnType: None
+    """
+    next_url = None
+    n_rows = 0
+    tic = asyncio.get_event_loop().time()
+    while True:
+        result: FetchResultsResponseBody | None = None
+        if next_url is not None:
+            raw_response = await client.get_async_httpx_client().request(
+                method='GET',
+                url=str(next_url),
+                params={'rowFormat': row_format},
+            )
+            if raw_response.status_code == 200:
+                result = FetchResultsResponseBody.from_dict(raw_response.json())
+            elif client.raise_on_unexpected_status:
+                raise errors.UnexpectedStatus(raw_response.status_code, raw_response.content)
+        else:
+            result = await fetch_results.asyncio(
+                session_handle,
+                operation_handle,
+                0,
+                client=client,
+                row_format=row_format
+            )
+        logger.debug(f"Fetch result: {result.to_dict() if result else None}")
+        res_data = get_fetch_result_data(result)
+        if res_data.data:
+            n_rows += len(res_data.data)
+            yield res_data
+        if res_data.eos or res_data.next_url is None:
+            break
+        if n_row_limit is not None and n_rows >= n_row_limit:
+            break
+        if max_poll_secs is not None and (asyncio.get_event_loop().time() - tic) >= max_poll_secs:
+            break
+        # break if the result is not a query result
+        next_url = res_data.next_url
+        await asyncio.sleep(poll_interval_secs)
+
+
+def fetch_results_gen(
+        client: Client,
+        session_handle: str,
+        operation_handle: str,
+        row_format: RowFormat = RowFormat.JSON,
+        poll_interval_secs: float = 0.1,
+        max_poll_secs: Optional[float] = None,
+        n_row_limit: Optional[int] = None,
+) -> Generator[FetchResultData, None, None]:
+    """
+    Fetch all results from Flink SQL Gateway until EOS is reached using sync client
+
+    Args:
+        client: Sync client instance
+        session_handle: Session handle string
+        operation_handle: Operation handle string
+        row_format: Format for the returned rows (JSON or CSV)
+        poll_interval_secs: Time to wait between polling
+        max_poll_secs: Maximum time to poll
+        n_row_limit: Maximum number of rows to fetch
+
+    YieldType:
+        tuple: (list of all data rows, list of column definitions)
+    SendType: None
+    ReturnType: None
+    """
+    next_url = None
+    n_rows = 0
+    tic = time.time()
+
+    while True:
+        result: FetchResultsResponseBody | None = None
+        if next_url is not None:
+            raw_response = client.get_httpx_client().request(
+                method='GET',
+                url=str(next_url),
+                params={'rowFormat': row_format},
+            )
+            if raw_response.status_code == 200:
+                result = FetchResultsResponseBody.from_dict(raw_response.json())
+            elif client.raise_on_unexpected_status:
+                raise errors.UnexpectedStatus(raw_response.status_code, raw_response.content)
+        else:
+            result = fetch_results.sync(
+                session_handle,
+                operation_handle,
+                0,
+                client=client,
+                row_format=row_format
+            )
+
+        logger.debug(f"Fetch result: {result.to_dict() if result else None}")
+        res_data = get_fetch_result_data(result)
+
+        if res_data.data:
+            n_rows += len(res_data.data)
+            yield res_data
+
+        if res_data.eos or res_data.next_url is None:
+            break
+
+        if n_row_limit is not None and n_rows >= n_row_limit:
+            break
+
+        if max_poll_secs is not None and (time.time() - tic) >= max_poll_secs:
+            break
+
+        next_url = res_data.next_url
+        time.sleep(poll_interval_secs)
