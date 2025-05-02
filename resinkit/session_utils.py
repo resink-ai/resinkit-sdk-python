@@ -68,7 +68,7 @@ def create_dataframe(data: List[List[Any]], columns: List[Dict[str, Any]]) -> pd
         try:
             df[col_name] = df[col_name].astype(pandas_dtype)
         except Exception as e:
-            print(
+            logger.warning(
                 f"Warning: Could not convert column {col_name} to {pandas_dtype}: {str(e)}")
 
     return df

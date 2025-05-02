@@ -1,7 +1,7 @@
 import logging
 import uuid
 from contextlib import asynccontextmanager, contextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Generator, AsyncGenerator
 
 from flink_gateway_api import Client
 from flink_gateway_api.api.default import (
@@ -125,7 +125,7 @@ class ExecuteDispatch:
         self.execute_timeout = execute_timeout
 
     @contextmanager
-    def sync(self) -> FlinkOperation:
+    def sync(self) -> Generator[FlinkOperation, None, None]:
         request_dict = get_execute_statement_request(self.sql, self.query_props, self.execute_timeout)
         response = execute_statement.sync(
             self.session.session_handle,
@@ -139,7 +139,7 @@ class ExecuteDispatch:
             operation.close().sync()
 
     @asynccontextmanager
-    async def asyncio(self) -> FlinkOperation:
+    async def asyncio(self) -> AsyncGenerator[FlinkOperation, None]:
         request_dict = get_execute_statement_request(self.sql, self.query_props, self.execute_timeout)
         response = await execute_statement.asyncio(
             self.session.session_handle,
@@ -161,7 +161,7 @@ class ExecuteAllDispatch:
         self.execute_timeout = execute_timeout
 
     @contextmanager
-    def sync(self) -> FlinkCompositeOperation:
+    def sync(self) -> Generator[FlinkCompositeOperation, None, None]:
         operations = []
         for sql in self.sqls:
             request_dict = get_execute_statement_request(sql, self.query_props, self.execute_timeout)
@@ -179,7 +179,7 @@ class ExecuteAllDispatch:
                 op.close().sync()
 
     @asynccontextmanager
-    async def asyncio(self) -> FlinkCompositeOperation:
+    async def asyncio(self) -> AsyncGenerator[FlinkCompositeOperation, None]:
         operations = []
         for sql in self.sqls:
             request_dict = get_execute_statement_request(sql, self.query_props, self.execute_timeout)
