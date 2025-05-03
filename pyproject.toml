@@ -8,6 +8,7 @@ readme = "README.md"
 dependencies = [
     "pandas>=2.0.0,<3",
     "flink-sql-gateway-api==1.19.0",
+    "flink-job-manager-api>=1.0.2",
 ]
 
 [dependency-groups]
