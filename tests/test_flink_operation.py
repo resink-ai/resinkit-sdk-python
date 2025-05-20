@@ -1,11 +1,10 @@
 import unittest
 from unittest.mock import Mock, patch, AsyncMock
 import pandas as pd
-from typing import List
 
 from resinkit.flink_operation import (
     FlinkOperation, FlinkCompositeOperation, ResultsFetchOpts,
-    OperationStatus, OperationFetch, OperationClose, OperationCancel
+    OperationFetch, OperationClose
 )
 
 class TestResultsFetchOpts(unittest.TestCase):

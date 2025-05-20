@@ -1,8 +1,6 @@
 
 import unittest
 import pandas as pd
-import numpy as np
-from typing import List, Dict, Any
 from pandas.testing import assert_frame_equal
 
 from resinkit.session_utils import create_dataframe

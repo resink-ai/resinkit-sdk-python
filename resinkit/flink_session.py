@@ -1,23 +1,26 @@
 import logging
 import uuid
 from contextlib import asynccontextmanager, contextmanager
-from typing import Any, Dict, List, Optional, Generator, AsyncGenerator
+from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 
 from flink_gateway_api import Client
 from flink_gateway_api.api.default import (
-    open_session,
+    close_session,
+    complete_statement,
     execute_statement,
-    close_session, complete_statement
+    open_session,
+    trigger_session,
 )
 from flink_gateway_api.models import (
+    CompleteStatementRequestBody,
+    CompleteStatementResponseBody,
+    ExecuteStatementRequestBody,
     OpenSessionRequestBody,
-    ExecuteStatementRequestBody, CompleteStatementRequestBody, CompleteStatementResponseBody,
 )
 
-from resinkit.flink_operation import FlinkOperation, FlinkCompositeOperation
-from resinkit.session_utils import (
-    get_execute_statement_request,
-)
+from resinkit.flink_operation import FlinkCompositeOperation, FlinkOperation
+from resinkit.session_utils import get_execute_statement_request
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,46 +35,94 @@ class FlinkSession:
             df = operation.fetch().sync()
     ```
     """
-    def __init__(self, client: Client, properties: Dict[str, str] = None, session_name: str = None):
+
+    def __init__(
+        self,
+        client: Client,
+        properties: Dict[str, str] = None,
+        session_name: str = None,
+        create_if_not_exist: bool = True,
+    ):
         self.properties = properties or {}
         self.session_handle: Optional[str] = None
         self.session_name = session_name or f"session_{uuid.uuid4()}"
         self.client: Client = client
+        self.was_alive = False  # Whether the session was alive when last checked
+        self.create_if_not_exist = create_if_not_exist
 
     async def __aenter__(self):
-        response = await open_session.asyncio(
-            client=self.client,
-            body=OpenSessionRequestBody.from_dict({
-                "properties": self.properties,
-                "sessionName": self.session_name
-            })
-        )
-        self.session_handle = response.session_handle
+        await self.open_async()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.session_handle:
-            await close_session.asyncio(self.session_handle, client=self.client)
+        await self.try_close_async()
 
     def __enter__(self):
-        response = open_session.sync(
-            client=self.client,
-            body=OpenSessionRequestBody.from_dict({
-                "properties": self.properties,
-                "sessionName": self.session_name
-            })
-        )
-        self.session_handle = response.session_handle
+        self.open_sync()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.session_handle:
-            close_session.sync(self.session_handle, client=self.client)
+        self.try_close_sync()
 
-    def complete_statement(self) -> 'SessionCompleteStatement':
+    def open_sync(self):
+        # If create_if_not_exist is False, do nothing
+        if not self.create_if_not_exist:
+            return
+        # If session is alive, do nothing
+        if self.is_alive():
+            return
+        # Otherwise, open a new session
+        response = open_session.sync(
+            client=self.client,
+            body=OpenSessionRequestBody.from_dict(
+                {"properties": self.properties, "sessionName": self.session_name}
+            ),
+        )
+        self.session_handle = response.session_handle
+        self.was_alive = True
+
+    async def open_async(self):
+        # If create_if_not_exist is False, do nothing
+        if not self.create_if_not_exist:
+            return
+        # If session is alive, do nothing
+        if self.is_alive():
+            return
+        # Otherwise, open a new session
+        response = await open_session.asyncio(
+            client=self.client,
+            body=OpenSessionRequestBody.from_dict(
+                {"properties": self.properties, "sessionName": self.session_name}
+            ),
+        )
+        self.session_handle = response.session_handle
+        self.was_alive = True
+
+    def try_close_sync(self):
+        if not self.session_handle:
+            return
+        try:
+            close_session.sync(self.session_handle, client=self.client)
+        except Exception as e:
+            logger.warning(f"Failed to close session {self.session_name}: {str(e)}")
+
+    async def try_close_async(self):
+        if not self.session_handle:
+            return
+        try:
+            await close_session.asyncio(self.session_handle, client=self.client)
+        except Exception as e:
+            logger.warning(f"Failed to close session {self.session_name}: {str(e)}")
+
+    def complete_statement(self) -> "SessionCompleteStatement":
         return SessionCompleteStatement(self)
 
-    def execute(self, sql: str, query_props: Optional[Dict[str, Any]] = None, execute_timeout: Optional[int] = None) -> 'ExecuteDispatch':
+    def execute(
+        self,
+        sql: str,
+        query_props: Optional[Dict[str, Any]] = None,
+        execute_timeout: Optional[int] = None,
+    ) -> "ExecuteDispatch":
         """Execute a SQL statement in a single session.
         Args:
             sql: SQL statement to execute
@@ -82,7 +133,12 @@ class FlinkSession:
         """
         return ExecuteDispatch(self, sql, query_props, execute_timeout)
 
-    def execute_all(self, sqls: List[str], query_props: Optional[Dict[str, Any]] = None, execute_timeout: Optional[int] = None) -> 'ExecuteAllDispatch':
+    def execute_all(
+        self,
+        sqls: List[str],
+        query_props: Optional[Dict[str, Any]] = None,
+        execute_timeout: Optional[int] = None,
+    ) -> "ExecuteAllDispatch":
         """Execute multiple SQL statements concurrently in a single session.
 
         Args:
@@ -94,6 +150,26 @@ class FlinkSession:
         """
         return ExecuteAllDispatch(self, sqls, query_props, execute_timeout)
 
+    def trigger_heartbeat(self):
+        return trigger_session.sync_detailed(
+            session_handle=self.session_handle, client=self.client
+        )
+
+    def is_alive(self):
+        if not self.session_handle:
+            return False
+        try:
+            response = self.client.get_httpx_client().request(
+                method="POST",
+                url=f"/sessions/{self.session_handle}/heartbeat",
+            )
+            self.was_alive = response.status_code == 200
+            return self.was_alive
+        except Exception:
+            self.was_alive = False
+            return False
+
+
 class SessionCompleteStatement:
     def __init__(self, session: FlinkSession):
         self.session = session
@@ -102,23 +178,33 @@ class SessionCompleteStatement:
         return complete_statement.sync(
             self.session.session_handle,
             client=self.session.client,
-            body=CompleteStatementRequestBody.from_dict({
-                "position": position,
-                "statement": statement,
-            }))
+            body=CompleteStatementRequestBody.from_dict(
+                {
+                    "position": position,
+                    "statement": statement,
+                }
+            ),
+        )
 
-    async def asyncio(self, position: int, statement: str) -> CompleteStatementResponseBody:
+    async def asyncio(
+        self, position: int, statement: str
+    ) -> CompleteStatementResponseBody:
         return await complete_statement.asyncio(
             self.session.session_handle,
             client=self.session.client,
-            body=CompleteStatementRequestBody.from_dict({
-                "position": position,
-                "statement": statement,
-            }))
+            body=CompleteStatementRequestBody.from_dict(
+                {
+                    "position": position,
+                    "statement": statement,
+                }
+            ),
+        )
 
 
 class ExecuteDispatch:
-    def __init__(self, session: 'FlinkSession', sql: str, query_props=None, execute_timeout=None):
+    def __init__(
+        self, session: "FlinkSession", sql: str, query_props=None, execute_timeout=None
+    ):
         self.session = session
         self.sql = sql
         self.query_props = query_props
@@ -126,11 +212,13 @@ class ExecuteDispatch:
 
     @contextmanager
     def sync(self) -> Generator[FlinkOperation, None, None]:
-        request_dict = get_execute_statement_request(self.sql, self.query_props, self.execute_timeout)
+        request_dict = get_execute_statement_request(
+            self.sql, self.query_props, self.execute_timeout
+        )
         response = execute_statement.sync(
             self.session.session_handle,
             client=self.session.client,
-            body=ExecuteStatementRequestBody.from_dict(request_dict)
+            body=ExecuteStatementRequestBody.from_dict(request_dict),
         )
         operation = FlinkOperation(self.session, response.operation_handle)
         try:
@@ -140,11 +228,13 @@ class ExecuteDispatch:
 
     @asynccontextmanager
     async def asyncio(self) -> AsyncGenerator[FlinkOperation, None]:
-        request_dict = get_execute_statement_request(self.sql, self.query_props, self.execute_timeout)
+        request_dict = get_execute_statement_request(
+            self.sql, self.query_props, self.execute_timeout
+        )
         response = await execute_statement.asyncio(
             self.session.session_handle,
             client=self.session.client,
-            body=ExecuteStatementRequestBody.from_dict(request_dict)
+            body=ExecuteStatementRequestBody.from_dict(request_dict),
         )
         operation = FlinkOperation(self.session, response.operation_handle)
         try:
@@ -154,7 +244,13 @@ class ExecuteDispatch:
 
 
 class ExecuteAllDispatch:
-    def __init__(self, session: 'FlinkSession', sqls: List[str], query_props=None, execute_timeout=None):
+    def __init__(
+        self,
+        session: "FlinkSession",
+        sqls: List[str],
+        query_props=None,
+        execute_timeout=None,
+    ):
         self.session = session
         self.sqls = sqls
         self.query_props = query_props
@@ -164,11 +260,13 @@ class ExecuteAllDispatch:
     def sync(self) -> Generator[FlinkCompositeOperation, None, None]:
         operations = []
         for sql in self.sqls:
-            request_dict = get_execute_statement_request(sql, self.query_props, self.execute_timeout)
+            request_dict = get_execute_statement_request(
+                sql, self.query_props, self.execute_timeout
+            )
             response = execute_statement.sync(
                 self.session.session_handle,
                 client=self.session.client,
-                body=ExecuteStatementRequestBody.from_dict(request_dict)
+                body=ExecuteStatementRequestBody.from_dict(request_dict),
             )
             operation = FlinkOperation(self.session, response.operation_handle)
             operations.append(operation)
@@ -182,11 +280,13 @@ class ExecuteAllDispatch:
     async def asyncio(self) -> AsyncGenerator[FlinkCompositeOperation, None]:
         operations = []
         for sql in self.sqls:
-            request_dict = get_execute_statement_request(sql, self.query_props, self.execute_timeout)
+            request_dict = get_execute_statement_request(
+                sql, self.query_props, self.execute_timeout
+            )
             response = await execute_statement.asyncio(
                 self.session.session_handle,
                 client=self.session.client,
-                body=ExecuteStatementRequestBody.from_dict(request_dict)
+                body=ExecuteStatementRequestBody.from_dict(request_dict),
             )
             operation = FlinkOperation(self.session, response.operation_handle)
             operations.append(operation)
