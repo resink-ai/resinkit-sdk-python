@@ -2,8 +2,8 @@ from typing import Optional
 
 from flink_gateway_api import Client
 from resinkit.flink_session import FlinkSession
-from resinkit.ui.tasks import ResinkitAPIClient, TasksManagementUI
-from resinkit.ui.variables import VariablesUI
+from resinkit.ui.tasks_management_ui import ResinkitAPIClient, TasksManagementUI
+from resinkit.ui.variables_ui import VariablesUI
 
 
 class Resinkit:
