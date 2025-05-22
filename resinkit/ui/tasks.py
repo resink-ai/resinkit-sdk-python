@@ -3,9 +3,6 @@ import param
 import pandas as pd
 import datetime
 import yaml
-import json
-import base64
-from typing import Dict, List, Optional, Any, Callable
 
 pn.extension("codeeditor")
 
@@ -14,11 +11,10 @@ class TasksManagementUI(param.Parameterized):
     
     current_view = param.String(default="task_list")
     selected_task_id = param.String(default=None)
-    api_client = param.ClassSelector(class_=object)
     
     def __init__(self, api_client, **params):
         super().__init__(**params)
-        self.api_client = api_client
+        self.api_client: ResinkitAPIClient = api_client
         self.task_list_view = self._create_task_list_view()
         self.task_submit_view = self._create_task_submit_view()
         self.task_detail_view = self._create_task_detail_view()
@@ -65,6 +61,7 @@ class TasksManagementUI(param.Parameterized):
             buttons={
                 "view": '<button class="task-view-btn">View</button>',
                 "cancel": '<button class="task-cancel-btn">Cancel</button>',
+                "delete": '<button class="task-delete-btn">Delete</button>',
             },
         )
         
@@ -89,6 +86,8 @@ class TasksManagementUI(param.Parameterized):
                     self._view_task_details(task_id)
                 elif event.column == "cancel":
                     self._cancel_task(task_id)
+                elif event.column == "delete":
+                    self._delete_task(task_id)
             except Exception as e:
                 self._show_error(f"Error processing action: {e}")
     
@@ -109,8 +108,6 @@ class TasksManagementUI(param.Parameterized):
                     "status": task.get("status"),
                     "created_at": created_at,
                     "updated_at": updated_at,
-                    "view": "",
-                    "cancel": "",
                 })
             # Update the table
             self.tasks_table.value = pd.DataFrame(processed_tasks)
@@ -140,41 +137,22 @@ class TasksManagementUI(param.Parameterized):
         self.param.trigger('current_view')
     
     def _cancel_task(self, task_id):
-        """Cancel a task with confirmation."""
-        confirm = pn.widgets.Checkbox(
-            name="Force cancel?", 
-            value=False, 
-            description="Enable to attempt forceful termination if graceful cancellation fails"
-        )
-        
-        def _do_cancel(event):
-            try:
-                result = self.api_client.cancel_task(task_id, force=confirm.value)
-                self._show_info(f"Task cancellation initiated: {result.get('message', '')}")
-                self._refresh_tasks(None)
-                dialog.close()
-            except Exception as e:
-                self._show_error(f"Error cancelling task: {str(e)}")
-        
-        cancel_btn = pn.widgets.Button(name="Cancel Task", button_type="danger")
-        cancel_btn.on_click(_do_cancel)
-        
-        close_btn = pn.widgets.Button(name="Close", button_type="default")
-        
-        dialog = pn.widgets.Dialog(
-            pn.Column(
-                pn.pane.Markdown(f"### Cancel Task {task_id}?"),
-                pn.pane.Markdown("This will request cancellation of the task. The task may take some time to fully cancel."),
-                confirm,
-                pn.Row(close_btn, cancel_btn)
-            ),
-            title="Confirm Cancellation",
-            closable=True,
-            width=400,
-        )
-        
-        close_btn.on_click(lambda event: dialog.close())
-        dialog.open()
+        """Cancel a task directly without confirmation."""
+        try:
+            result = self.api_client.cancel_task(task_id, force=False)
+            self._show_info(f"Task cancellation initiated: {result.get('message', '')}")
+            self._refresh_tasks(None)
+        except Exception as e:
+            self._show_error(f"Error cancelling task: {str(e)}")
+    
+    def _delete_task(self, task_id):
+        """Permanently delete a task immediately, no confirmation dialog."""
+        try:
+            result = self.api_client.permanently_delete_task(task_id)
+            self._show_info(f"Task deleted permanently: {result.get('message', '')}")
+            self._refresh_tasks(None)
+        except Exception as e:
+            self._show_error(f"Error deleting task: {str(e)}")
     
     def _create_task_submit_view(self):
         """Create the task submission view with YAML input."""
@@ -188,15 +166,15 @@ class TasksManagementUI(param.Parameterized):
         )
         
         example_yaml = """task_type: flink_sql
-name: Example SQL Task
-description: A simple SQL query
+name: Select from datagen
+description: Create dummy table and then select first 10
 task_timeout_seconds: 300
 
-pipeline:
-  sql: >
+job:
+  sql: |
     -- checkpoint every 3000 milliseconds
     SET 'execution.checkpointing.interval' = '3s';
-    
+
     -- Create dummy table
     CREATE TABLE dummy (
         id INT,
@@ -204,9 +182,13 @@ pipeline:
     ) WITH (
         'connector' = 'datagen'
     );
-    
+
     -- Query the table
     SELECT * FROM dummy LIMIT 10;
+
+  pipeline:
+    name: select from datagen
+    parallelism: 1
 """
         self.yaml_input = pn.widgets.CodeEditor(
             value=example_yaml,
@@ -328,20 +310,34 @@ pipeline:
             
             if task.get('error_info'):
                 err = task['error_info']
+                # Support both 'error' and 'message' keys
+                error_message = err.get('error') or err.get('message', 'Unknown error')
+                error_code = err.get('code', 'Unknown') if 'code' in err else ''
+                error_timestamp = err.get('timestamp', '')
                 task_info += f"""
 ### Error Information
-**Error:** {err.get('message', 'Unknown error')}  
-**Code:** {err.get('code', 'Unknown')}  
+**Error:** {error_message}  
 """
+                if error_code:
+                    task_info += f"**Code:** {error_code}  \n"
+                if error_timestamp:
+                    task_info += f"**Timestamp:** {error_timestamp}  \n"
             
             self.task_info_pane.object = task_info
             
             # Get logs
             try:
                 logs = self.api_client.get_task_logs(self.selected_task_id)
+                # Handle both dict and list responses
+                if isinstance(logs, dict):
+                    log_entries = logs.get('log_entries', [])
+                elif isinstance(logs, list):
+                    log_entries = logs
+                else:
+                    log_entries = []
                 log_text = "\n".join([
                     f"{e.get('timestamp', '')} [{e.get('level', 'INFO')}] {e.get('source', '')}: {e.get('message', '')}"
-                    for e in logs.get('log_entries', [])
+                    for e in log_entries
                 ])
                 self.task_logs.value = log_text or "No logs available"
             except Exception as e:
@@ -370,7 +366,10 @@ pipeline:
     
     def _show_info(self, message):
         """Show an info notification."""
-        pn.state.notifications.info(message, duration=5000)
+        if hasattr(pn.state, "notifications") and pn.state.notifications is not None:
+            pn.state.notifications.info(message, duration=5000)
+        else:
+            print(f"INFO: {message}")
     
     def show(self):
         """Display the UI."""
@@ -468,4 +467,17 @@ class ResinkitAPIClient:
         response = requests.get(endpoint, headers=self._get_headers())
         response.raise_for_status()
         return response.json()
+    
+    def permanently_delete_task(self, task_id):
+        """Permanently delete a task and its events if the task is in an end state."""
+        import requests
+        endpoint = f"{self.base_url}/api/v1/agent/tasks/{task_id}/permanent"
+        response = requests.delete(endpoint, headers=self._get_headers())
+        if response.status_code == 204:
+            return {"message": "Task deleted permanently."}
+        else:
+            try:
+                return response.json()
+            except Exception:
+                response.raise_for_status()
 
