@@ -42,6 +42,8 @@ class TasksManagementUI(param.Parameterized):
             pn.Row(
                 pn.widgets.Button(name="↻ Refresh", button_type="default", width=100, on_click=self._refresh_tasks),
                 pn.widgets.Button(name="+ Submit New", button_type="primary", width=150, on_click=self._switch_to_submit),
+                pn.widgets.Button(name="✗ Cancel", button_type="danger", width=100, on_click=self._cancel_selected_tasks),
+                pn.widgets.Button(name="🗑 Delete", button_type="danger", width=100, on_click=self._delete_selected_tasks),
                 sizing_mode="fixed"
             ),
             sizing_mode="stretch_width"
@@ -54,14 +56,14 @@ class TasksManagementUI(param.Parameterized):
             sizing_mode="stretch_width",
             height=500,
             layout="fit_columns",
-            selectable=False,
+            selectable="checkbox",
+            show_index=False,
             configuration={
                 "resizableColumns": True,
+                "selectableCheck": """function(row) { return true; }""",
             },
             buttons={
                 "view": '<button class="task-view-btn">View</button>',
-                "cancel": '<button class="task-cancel-btn">Cancel</button>',
-                "delete": '<button class="task-delete-btn">Delete</button>',
             },
         )
         
@@ -84,12 +86,56 @@ class TasksManagementUI(param.Parameterized):
                 task_id = self.tasks_table.value.iloc[event.row]["task_id"]
                 if event.column == "view":
                     self._view_task_details(task_id)
-                elif event.column == "cancel":
-                    self._cancel_task(task_id)
-                elif event.column == "delete":
-                    self._delete_task(task_id)
             except Exception as e:
                 self._show_error(f"Error processing action: {e}")
+    
+    def _cancel_selected_tasks(self, event):
+        """Cancel all selected tasks."""
+        selected_indices = self.tasks_table.selection
+        if not selected_indices:
+            self._show_info("No tasks selected for cancellation.")
+            return
+        
+        try:
+            selected_tasks = self.tasks_table.value.iloc[selected_indices]
+            task_ids = selected_tasks["task_id"].tolist()
+            
+            success_count = 0
+            for task_id in task_ids:
+                try:
+                    result = self.api_client.cancel_task(task_id, force=False)
+                    success_count += 1
+                except Exception as e:
+                    self._show_error(f"Error cancelling task {task_id}: {str(e)}")
+            
+            self._show_info(f"Successfully initiated cancellation for {success_count} out of {len(task_ids)} tasks.")
+            self._refresh_tasks(None)
+        except Exception as e:
+            self._show_error(f"Error processing task cancellation: {str(e)}")
+    
+    def _delete_selected_tasks(self, event):
+        """Permanently delete all selected tasks."""
+        selected_indices = self.tasks_table.selection
+        if not selected_indices:
+            self._show_info("No tasks selected for deletion.")
+            return
+        
+        try:
+            selected_tasks = self.tasks_table.value.iloc[selected_indices]
+            task_ids = selected_tasks["task_id"].tolist()
+            
+            success_count = 0
+            for task_id in task_ids:
+                try:
+                    result = self.api_client.permanently_delete_task(task_id)
+                    success_count += 1
+                except Exception as e:
+                    self._show_error(f"Error deleting task {task_id}: {str(e)}")
+            
+            self._show_info(f"Successfully deleted {success_count} out of {len(task_ids)} tasks.")
+            self._refresh_tasks(None)
+        except Exception as e:
+            self._show_error(f"Error processing task deletion: {str(e)}")
     
     def _refresh_tasks(self, event):
         """Fetch the latest tasks and update the table."""
@@ -136,24 +182,6 @@ class TasksManagementUI(param.Parameterized):
         self.current_view = "task_detail"
         self.param.trigger('current_view')
     
-    def _cancel_task(self, task_id):
-        """Cancel a task directly without confirmation."""
-        try:
-            result = self.api_client.cancel_task(task_id, force=False)
-            self._show_info(f"Task cancellation initiated: {result.get('message', '')}")
-            self._refresh_tasks(None)
-        except Exception as e:
-            self._show_error(f"Error cancelling task: {str(e)}")
-    
-    def _delete_task(self, task_id):
-        """Permanently delete a task immediately, no confirmation dialog."""
-        try:
-            result = self.api_client.permanently_delete_task(task_id)
-            self._show_info(f"Task deleted permanently: {result.get('message', '')}")
-            self._refresh_tasks(None)
-        except Exception as e:
-            self._show_error(f"Error deleting task: {str(e)}")
-    
     def _create_task_submit_view(self):
         """Create the task submission view with YAML input."""
         header = pn.Row(
@@ -165,29 +193,26 @@ class TasksManagementUI(param.Parameterized):
             sizing_mode="stretch_width"
         )
         
-        example_yaml = """task_type: flink_sql
-name: Select from datagen
-description: Create dummy table and then select first 10
-task_timeout_seconds: 300
+        example_yaml = """
+task_type: flink_sql
+name: select_literal
+description: select from constants
+task_timeout_seconds: 30
 
 job:
   sql: |
-    -- checkpoint every 3000 milliseconds
-    SET 'execution.checkpointing.interval' = '3s';
-
-    -- Create dummy table
-    CREATE TABLE dummy (
-        id INT,
-        name STRING
-    ) WITH (
-        'connector' = 'datagen'
-    );
-
-    -- Query the table
-    SELECT * FROM dummy LIMIT 10;
-
+    SELECT 
+      42 AS user_id,
+      'John Doe' AS full_name,
+      CAST('1990-05-15' AS DATE) AS birth_date,
+      TIMESTAMP '2025-05-15 14:30:00' AS registration_time,
+      true AS is_active,
+      CAST(3.14159 AS DECIMAL(10,5)) AS pi_value,
+      ARRAY['red', 'green', 'blue'] AS favorite_colors,
+      MAP['language', 'SQL', 'level', 'advanced'] AS skills,
+      ROW('New York', 'USA', 10001) AS address;
   pipeline:
-    name: select from datagen
+    name: select one row
     parallelism: 1
 """
         self.yaml_input = pn.widgets.CodeEditor(
@@ -447,7 +472,8 @@ class ResinkitAPIClient:
             "force": force
         }
         response = requests.post(endpoint, headers=self._get_headers(), json=payload)
-        response.raise_for_status()
+        if response.status_code != 200:
+            raise Exception(response.text)
         return response.json()
     
     def get_task_logs(self, task_id, **kwargs):

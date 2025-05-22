@@ -29,8 +29,9 @@ class VariablesUI:
             'actions': 'Actions'
         }
         
-        self.add_button = pn.widgets.Button(name='Add Variable', button_type='primary')
-        self.refresh_button = pn.widgets.Button(name='Refresh', button_type='default')
+        # Updated buttons with icons
+        self.add_button = pn.widgets.Button(name='+ Add Variable', button_type='primary', width=150)
+        self.refresh_button = pn.widgets.Button(name='↻ Refresh', button_type='default', width=100)
         
         # Form components
         self.name_input = pn.widgets.TextInput(name='Name', placeholder='Enter variable name')
@@ -55,9 +56,17 @@ class VariablesUI:
         # Status notification
         self.notification = pn.widgets.StaticText(value='', styles={'color': 'red'})
         
-        # Layout
+        # Updated layout with buttons on the right
         self.table_view = pn.Column(
-            pn.Row(pn.pane.Markdown('# Variables'), pn.Spacer(), self.add_button, self.refresh_button),
+            pn.Row(
+                pn.pane.Markdown('# Variables', sizing_mode='stretch_width'),
+                pn.Row(
+                    self.refresh_button,
+                    self.add_button,
+                    sizing_mode='fixed'
+                ),
+                sizing_mode='stretch_width'
+            ),
             self.notification,
             self.variables_table
         )
