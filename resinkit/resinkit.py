@@ -12,7 +12,9 @@ class Resinkit:
         resinkit_session: Optional[str] = None,
         personal_access_token: Optional[str] = None,
         sql_gateway_url: Optional[str] = None,
+        base_url: Optional[str] = None,
     ):
+        self._base_url = base_url
         self._sql_gateway_url = sql_gateway_url
         self._resinkit_session_id = resinkit_session
         self._personal_access_token = personal_access_token
@@ -53,7 +55,7 @@ class Resinkit:
         Returns:
             A Panel UI component that can be displayed in a notebook.
         """
-        api_url = base_url or self._sql_gateway_url
+        api_url = base_url or self._base_url
         if not api_url:
             raise ValueError("No API URL provided. Please provide a base_url or initialize Resinkit with sql_gateway_url.")
         
@@ -74,7 +76,7 @@ class Resinkit:
         Returns:
             A Panel UI component that can be displayed in a notebook.
         """
-        api_url = base_url or self._sql_gateway_url
+        api_url = base_url or self._base_url
         if not api_url:
             raise ValueError(
                 "No API URL provided. Please provide a base_url or initialize Resinkit with sql_gateway_url."

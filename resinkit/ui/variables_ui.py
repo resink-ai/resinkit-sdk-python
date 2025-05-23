@@ -1,7 +1,7 @@
 import panel as pn
 import requests
 import pandas as pd
-from typing import Dict, List, Optional, Callable, Any
+from typing import Dict, List, Optional, Any
 
 class VariablesUI:
     def __init__(self, base_url: str, session_id: Optional[str] = None, personal_access_token: Optional[str] = None):

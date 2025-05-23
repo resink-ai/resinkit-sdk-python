@@ -53,7 +53,6 @@ from resinkit import Client
 client = Client()
 
 # Use the client
-# Add usage examples here
 ```
 
 ## Contributing

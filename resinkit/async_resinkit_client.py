@@ -1,26 +1,22 @@
-import asyncio
 import json
 import logging
 import uuid
-from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
-from flink_gateway_api import Client, errors
+from flink_gateway_api import Client
 from flink_gateway_api.api.default import (
     open_session,
     execute_statement,
-    fetch_results,
 )
 from flink_gateway_api.models import (
     OpenSessionRequestBody,
     ExecuteStatementResponseBody,
-    RowFormat, FetchResultsResponseBody,
 )
 
 from resinkit.session_utils import (
     create_dataframe,
     get_execute_statement_request,
-    get_fetch_result_data,
     FetchResultData, fetch_results_async_gen,
 )
 
