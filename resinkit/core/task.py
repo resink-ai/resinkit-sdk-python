@@ -11,6 +11,7 @@ class Task:
         task = Task("flink_sql_NtPBUmwDr", base_url="http://localhost:8080")
         df = task.result_df()
     """
+    __slots__ = ("task_id")
 
     def __init__(
         self,
@@ -53,7 +54,7 @@ class Task:
             self._task_results = self.api_client.get_task_results(self.task_id)
         return self._task_results
 
-    def result_df(self) -> List[pd.DataFrame]:
+    def get_result_df(self) -> List[pd.DataFrame]:
         """
         Get query results as pandas DataFrame(s).
 
@@ -84,13 +85,13 @@ class Task:
         results = self.get_task_results()
 
         # Extract result_summary
-        result_summary = results.get("result_summary", {})
-        if not result_summary:
-            raise ValueError(f"No result summary found for task {self.task_id}")
+        result_data = results.get("data", {})
+        if not result_data:
+            raise ValueError(f"No result data found for task {self.task_id}")
 
         # Get the results array, is_query flags, and results data
-        results_list = result_summary.get("results", [])
-        is_query_list = result_summary.get("is_query", [])
+        results_list = result_data.get("results", [])
+        is_query_list = result_data.get("is_query", [])
 
         if not results_list or not is_query_list:
             raise ValueError(
