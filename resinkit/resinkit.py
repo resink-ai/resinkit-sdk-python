@@ -1,7 +1,7 @@
 from typing import Optional
 
 from flink_gateway_api import Client
-from resinkit.flink_session import FlinkSession
+from resinkit.core.task import Task
 from resinkit.ui.tasks_management_ui import ResinkitAPIClient, TasksManagementUI
 from resinkit.ui.variables_ui import VariablesUI
 
@@ -24,52 +24,42 @@ class Resinkit:
         )
 
         if resinkit_session:
-            self._sql_gateway_client = self._sql_gateway_client.with_cookies({"resink_session": resinkit_session})
+            self._sql_gateway_client = self._sql_gateway_client.with_cookies(
+                {"resink_session": resinkit_session}
+            )
 
         if personal_access_token:
-            self._sql_gateway_client = self._sql_gateway_client.with_headers({"Authorization": personal_access_token})
+            self._sql_gateway_client = self._sql_gateway_client.with_headers(
+                {"Authorization": personal_access_token}
+            )
 
-
-    @property
-    def sql_gateway_client(self) -> 'Client':
-        return self._sql_gateway_client
-
-    def get_session(
-        self,
-        properties: Optional[dict] = None,
-        session_name: Optional[str] = None,
-        create_if_not_exist: bool = True,
-    ) -> FlinkSession:
-        session = FlinkSession(self.sql_gateway_client, properties, session_name, create_if_not_exist)
-        if create_if_not_exist:
-            session.open_sync()
-        return session
-        
     def show_vars_ui(self, base_url: Optional[str] = None) -> None:
         """
         Display a UI for managing variables.
-        
+
         Args:
             base_url: The base URL for the API. If not provided, uses the SQL gateway URL.
-        
+
         Returns:
             A Panel UI component that can be displayed in a notebook.
         """
         api_url = base_url or self._base_url
         if not api_url:
-            raise ValueError("No API URL provided. Please provide a base_url or initialize Resinkit with sql_gateway_url.")
-        
+            raise ValueError(
+                "No API URL provided. Please provide a base_url or initialize Resinkit with sql_gateway_url."
+            )
+
         ui = VariablesUI(
             base_url=api_url,
             session_id=self._resinkit_session_id,
-            personal_access_token=self._personal_access_token
+            personal_access_token=self._personal_access_token,
         )
         return ui.show()
 
     def show_tasks_ui(self, base_url: Optional[str] = None) -> None:
         """
         Display a UI for managing tasks.
-        
+
         Args:
             base_url: The base URL for the API. If not provided, uses the SQL gateway URL.
 
@@ -85,3 +75,10 @@ class Resinkit:
         api_client = ResinkitAPIClient(base_url=api_url)
         ui = TasksManagementUI(api_client=api_client)
         return ui.show()
+
+    def get_task(self, task_id: str) -> Task:
+        return Task(
+            task_id=task_id,
+            base_url=self._base_url,
+            api_key=self._personal_access_token,
+        )
