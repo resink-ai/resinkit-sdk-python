@@ -1,7 +1,7 @@
 import panel as pn
-import requests
 import pandas as pd
 from typing import Dict, List, Optional, Any
+from ..core.resinkit_api_client import ResinkitAPIClient
 
 
 class VariablesUI:
@@ -15,6 +15,11 @@ class VariablesUI:
         self.session_id = session_id
         self.personal_access_token = personal_access_token
         self.variables = []
+
+        # Initialize API client
+        self.api_client = ResinkitAPIClient(
+            base_url=base_url, api_key=personal_access_token, session_id=session_id
+        )
 
         # Initialize Panel components
         pn.extension()
@@ -102,28 +107,10 @@ class VariablesUI:
 
         self.main = pn.Column(self.table_view)
 
-    def _get_headers(self) -> Dict[str, str]:
-        headers = {"Content-Type": "application/json"}
-        if self.personal_access_token:
-            headers["Authorization"] = self.personal_access_token
-        return headers
-
-    def _get_cookies(self) -> Dict[str, str]:
-        cookies = {}
-        if self.session_id:
-            cookies["resink_session"] = self.session_id
-        return cookies
-
     def _load_variables(self) -> List[Dict[str, Any]]:
         """Fetch variables from API"""
         try:
-            response = requests.get(
-                f"{self.base_url}/api/v1/agent/variables",
-                headers=self._get_headers(),
-                cookies=self._get_cookies(),
-            )
-            response.raise_for_status()
-            variables = response.json()
+            variables = self.api_client.list_variables()
 
             # Add action buttons to each row
             for var in variables:
@@ -139,13 +126,7 @@ class VariablesUI:
     def _get_variable(self, name: str) -> Dict[str, Any]:
         """Get a specific variable including its value"""
         try:
-            response = requests.get(
-                f"{self.base_url}/api/v1/agent/variables/{name}",
-                headers=self._get_headers(),
-                cookies=self._get_cookies(),
-            )
-            response.raise_for_status()
-            return response.json()
+            return self.api_client.get_variable(name)
         except Exception as e:
             self.notification.value = f"Error fetching variable {name}: {e}"
             return {}
@@ -200,12 +181,7 @@ class VariablesUI:
     def _delete_variable(self, name: str):
         """Delete a variable"""
         try:
-            response = requests.delete(
-                f"{self.base_url}/api/v1/agent/variables/{name}",
-                headers=self._get_headers(),
-                cookies=self._get_cookies(),
-            )
-            response.raise_for_status()
+            self.api_client.delete_variable(name)
             self.notification.value = f"Variable '{name}' deleted successfully"
             self._refresh_variables()
         except Exception as e:
@@ -238,13 +214,7 @@ class VariablesUI:
             return
 
         try:
-            response = requests.post(
-                f"{self.base_url}/api/v1/agent/variables",
-                json={"name": name, "value": value, "description": description},
-                headers=self._get_headers(),
-                cookies=self._get_cookies(),
-            )
-            response.raise_for_status()
+            self.api_client.create_variable(name, value, description)
 
             # Clear form and return to table view
             self.notification.value = f"Variable '{name}' created successfully"

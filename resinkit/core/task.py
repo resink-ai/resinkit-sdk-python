@@ -11,24 +11,23 @@ class Task:
         task = Task("flink_sql_NtPBUmwDr", base_url="http://localhost:8080")
         df = task.result_df()
     """
-    __slots__ = ("task_id")
+
+    __slots__ = "task_id"
 
     def __init__(
         self,
         task_id: str,
-        base_url: Optional[str] = None,
-        api_key: Optional[str] = None,
+        api_client: ResinkitAPIClient,
     ):
         """
         Initialize a Task instance.
 
         Args:
             task_id: The unique identifier for the task
-            base_url: Base URL for the API (e.g., "http://localhost:8080")
-            api_key: Optional API key for authentication
+            api_client: ResinkitAPIClient instance
         """
         self.task_id = task_id
-        self.api_client = ResinkitAPIClient(base_url=base_url, api_key=api_key)
+        self.api_client = api_client
         self._task_details = None
         self._task_results = None
 

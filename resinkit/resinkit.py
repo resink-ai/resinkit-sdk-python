@@ -72,13 +72,15 @@ class Resinkit:
                 "No API URL provided. Please provide a base_url or initialize Resinkit with sql_gateway_url."
             )
 
-        api_client = ResinkitAPIClient(base_url=api_url)
+        api_client = ResinkitAPIClient(
+            base_url=api_url,
+            api_key=self._personal_access_token,
+        )
         ui = TasksManagementUI(api_client=api_client)
         return ui.show()
 
     def get_task(self, task_id: str) -> Task:
         return Task(
             task_id=task_id,
-            base_url=self._base_url,
-            api_key=self._personal_access_token,
+            api_client=self._api_client,
         )
