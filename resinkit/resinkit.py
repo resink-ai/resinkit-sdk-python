@@ -22,6 +22,10 @@ class Resinkit:
             base_url=sql_gateway_url,
             raise_on_unexpected_status=True,
         )
+        self.api_client = ResinkitAPIClient(
+            base_url=base_url,
+            api_key=self._personal_access_token,
+        )
 
         if resinkit_session:
             self._sql_gateway_client = self._sql_gateway_client.with_cookies(
@@ -33,54 +37,43 @@ class Resinkit:
                 {"Authorization": personal_access_token}
             )
 
-    def show_vars_ui(self, base_url: Optional[str] = None) -> None:
+    def show_vars_ui(self) -> None:
         """
         Display a UI for managing variables.
 
         Args:
-            base_url: The base URL for the API. If not provided, uses the SQL gateway URL.
-
         Returns:
             A Panel UI component that can be displayed in a notebook.
         """
-        api_url = base_url or self._base_url
-        if not api_url:
-            raise ValueError(
-                "No API URL provided. Please provide a base_url or initialize Resinkit with sql_gateway_url."
-            )
-
         ui = VariablesUI(
-            base_url=api_url,
+            base_url=self._base_url,
             session_id=self._resinkit_session_id,
             personal_access_token=self._personal_access_token,
         )
         return ui.show()
 
-    def show_tasks_ui(self, base_url: Optional[str] = None) -> None:
+    def show_tasks_ui(self) -> None:
         """
         Display a UI for managing tasks.
 
         Args:
-            base_url: The base URL for the API. If not provided, uses the SQL gateway URL.
-
         Returns:
             A Panel UI component that can be displayed in a notebook.
         """
-        api_url = base_url or self._base_url
-        if not api_url:
-            raise ValueError(
-                "No API URL provided. Please provide a base_url or initialize Resinkit with sql_gateway_url."
-            )
-
-        api_client = ResinkitAPIClient(
-            base_url=api_url,
-            api_key=self._personal_access_token,
-        )
-        ui = TasksManagementUI(api_client=api_client)
+        ui = TasksManagementUI(api_client=self.api_client)
         return ui.show()
 
     def get_task(self, task_id: str) -> Task:
+        """
+        Get a Task instance for the given task_id.
+
+        Args:
+            task_id: The unique identifier for the task
+
+        Returns:
+            Task: A Task instance configured with the appropriate API client
+        """
         return Task(
             task_id=task_id,
-            api_client=self._api_client,
+            api_client=self.api_client,
         )
