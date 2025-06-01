@@ -195,6 +195,9 @@ class TasksManagementUI(param.Parameterized):
 
     def _switch_to_submit(self, event):
         """Switch to the task submission view."""
+        # Reset the submit button state when entering the view
+        self.submit_btn.disabled = False
+        self.submit_btn.name = "Submit Task"
         self.current_view = "task_submit"
         self.param.trigger("current_view")
 
@@ -251,10 +254,10 @@ job:
             sizing_mode="stretch_width",
         )
 
-        submit_btn = pn.widgets.Button(
+        self.submit_btn = pn.widgets.Button(
             name="Submit Task", button_type="primary", width=150
         )
-        submit_btn.on_click(self._submit_yaml_task)
+        self.submit_btn.on_click(self._submit_yaml_task)
 
         cancel_btn = pn.widgets.Button(name="Cancel", button_type="default", width=100)
         cancel_btn.on_click(self._back_to_list)
@@ -263,12 +266,16 @@ job:
             header,
             pn.pane.Markdown("## Task Configuration (YAML)"),
             self.yaml_input,
-            pn.Row(cancel_btn, submit_btn, align="end"),
+            pn.Row(cancel_btn, self.submit_btn, align="end"),
             sizing_mode="stretch_width",
         )
 
     def _submit_yaml_task(self, event):
         """Submit a new task with YAML configuration."""
+        # Disable the submit button to prevent multiple submissions
+        self.submit_btn.disabled = True
+        self.submit_btn.name = "Submitting..."
+
         try:
             # Validate YAML
             yaml_config = self.yaml_input.value
@@ -284,6 +291,9 @@ job:
             self._back_to_list(None)
             self._refresh_tasks(None)
         except Exception as e:
+            # Re-enable the button on error so user can try again
+            self.submit_btn.disabled = False
+            self.submit_btn.name = "Submit Task"
             self._show_error(f"Error submitting task: {str(e)}")
 
     def _back_to_list(self, event):
@@ -406,18 +416,11 @@ job:
                 self.task_logs.value = f"Error loading logs: {str(e)}"
 
             # Get results if task is completed
-            if task.get("status") == "COMPLETED":
-                try:
-                    results = self.api_client.get_task_results(self.selected_task_id)
-                    self.task_results.object = results
-                except Exception as e:
-                    self.task_results.object = {
-                        "error": f"Error loading results: {str(e)}"
-                    }
-            else:
-                self.task_results.object = {
-                    "message": "Results only available for completed tasks"
-                }
+            try:
+                results = self.api_client.get_task_results(self.selected_task_id)
+                self.task_results.object = results
+            except Exception as e:
+                self.task_results.object = {"error": f"Error loading results: {str(e)}"}
 
         except Exception as e:
             self._show_error(f"Error loading task details: {str(e)}")
