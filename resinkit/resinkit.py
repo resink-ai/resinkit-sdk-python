@@ -2,6 +2,7 @@ from typing import Optional
 
 from flink_gateway_api import Client
 from resinkit.core.task import Task
+from resinkit.ui.sql_task_ui import SQLTaskUI
 from resinkit.ui.tasks_management_ui import ResinkitAPIClient, TasksManagementUI
 from resinkit.ui.variables_ui import VariablesUI
 
@@ -77,3 +78,10 @@ class Resinkit:
             task_id=task_id,
             api_client=self.api_client,
         )
+
+    def show_sql_task_ui(self) -> None:
+        """
+        Display a UI for submitting Flink SQL tasks.
+        """
+        ui = SQLTaskUI(api_client=self.api_client)
+        return ui.show()
