@@ -1,4 +1,5 @@
 import fnmatch
+import json
 import logging
 import os
 from pathlib import Path
@@ -31,17 +32,27 @@ class FileKnowledgeBase:
     A knowledge base that supports adding files and directories, with semantic search capabilities.
     """
 
-    def __init__(self, persist_dir: str = "./chroma_db", test_mode: bool = False):
+    def __init__(
+        self,
+        persist_dir: str = "./chroma_db",
+        test_mode: bool = False,
+        kb_id: str = "default",
+    ):
         """
         Initialize the FileKnowledgeBase.
 
         Args:
             persist_dir: Directory to persist the vector store data
             test_mode: If True, uses mock embeddings and LLM for testing without API keys
+            kb_id: Unique identifier for this knowledge base instance
         """
         self.persist_dir = persist_dir
         self.test_mode = test_mode
+        self.kb_id = kb_id
         self.settings = get_settings()
+
+        # Initialize state file path
+        self.state_file_path = self._get_state_file_path()
 
         # Initialize embedding model
         self.embed_model = self._get_embedding_model()
@@ -69,6 +80,84 @@ class FileKnowledgeBase:
 
         # Keep track of added files to avoid duplicates
         self._added_files = set()
+
+        # Load previous state if exists
+        self._load_state()
+
+    def _get_state_file_path(self) -> Path:
+        """Get the path to the state file for this knowledge base."""
+        persist_root = Path(self.settings.knowledge_base_config.persist_root_dir)
+        persist_root.mkdir(parents=True, exist_ok=True)
+        return persist_root / f"kb_{self.kb_id}_state.json"
+
+    def _save_state(self) -> None:
+        """Save the current state to disk."""
+        try:
+            if not self.settings.knowledge_base_config.auto_persist:
+                return
+
+            state_data = {
+                "kb_id": self.kb_id,
+                "persist_dir": str(self.persist_dir),
+                "added_files": list(self._added_files),
+                "test_mode": self.test_mode,
+                "embedding_provider": self.settings.embedding_config.provider,
+                "embedding_model": self.settings.embedding_config.model,
+                "llm_provider": self.settings.llm_config.provider,
+                "llm_model": self.settings.llm_config.model,
+            }
+
+            with open(self.state_file_path, "w", encoding="utf-8") as f:
+                json.dump(state_data, f, indent=2, ensure_ascii=False)
+
+            logger.debug(f"Saved knowledge base state to {self.state_file_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to save state: {e}")
+
+    def _load_state(self) -> None:
+        """Load the previous state from disk."""
+        try:
+            if not self.state_file_path.exists():
+                logger.debug(f"No previous state found at {self.state_file_path}")
+                return
+
+            with open(self.state_file_path, "r", encoding="utf-8") as f:
+                state_data = json.load(f)
+
+            # Validate state compatibility
+            if state_data.get("kb_id") != self.kb_id:
+                logger.warning(
+                    f"State file kb_id mismatch: expected {self.kb_id}, got {state_data.get('kb_id')}"
+                )
+                return
+
+            if state_data.get("persist_dir") != str(self.persist_dir):
+                logger.warning(
+                    f"State file persist_dir mismatch: expected {self.persist_dir}, got {state_data.get('persist_dir')}"
+                )
+                return
+
+            # Load added files
+            added_files = state_data.get("added_files", [])
+            if added_files:
+                # Validate that files still exist
+                valid_files = []
+                for file_path in added_files:
+                    if Path(file_path).exists():
+                        valid_files.append(file_path)
+                    else:
+                        logger.warning(
+                            f"Previously added file no longer exists: {file_path}"
+                        )
+
+                self._added_files = set(valid_files)
+                logger.info(f"Loaded {len(self._added_files)} previously added files")
+
+            logger.debug(f"Loaded knowledge base state from {self.state_file_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to load state: {e}")
 
     def _get_embedding_model(self) -> BaseEmbedding:
         """Get the configured embedding model."""
@@ -200,6 +289,9 @@ class FileKnowledgeBase:
                 f"Added file {file_path} to knowledge base ({len(nodes)} nodes)"
             )
 
+            # Persist state after successful addition
+            self._save_state()
+
         except Exception as e:
             logger.error(f"Error adding file {file_path}: {str(e)}")
             raise
@@ -253,6 +345,9 @@ class FileKnowledgeBase:
             logger.info(
                 f"Added {len(filtered_docs)} files from {directory_path} to knowledge base ({len(nodes)} nodes)"
             )
+
+            # Persist state after successful addition
+            self._save_state()
 
         except Exception as e:
             logger.error(f"Error adding directory {directory_path}: {str(e)}")
@@ -369,6 +464,54 @@ class FileKnowledgeBase:
             except ValueError:
                 return False
 
+    def save_state(self) -> None:
+        """
+        Manually save the current state to disk.
+
+        This method can be called to force persistence even if auto_persist is disabled.
+        """
+        # Temporarily enable auto_persist to force save
+        original_auto_persist = self.settings.knowledge_base_config.auto_persist
+        self.settings.knowledge_base_config.auto_persist = True
+
+        try:
+            self._save_state()
+            logger.info(
+                f"Manually saved knowledge base state to {self.state_file_path}"
+            )
+        finally:
+            # Restore original setting
+            self.settings.knowledge_base_config.auto_persist = original_auto_persist
+
+    def clear_knowledge_base(self) -> None:
+        """
+        Clear all files from the knowledge base and remove the state file.
+
+        Warning: This will permanently remove all data from the knowledge base.
+        """
+        try:
+            # Clear the vector store by creating a new collection
+            self.vector_store = self._initialize_vector_store()
+
+            # Reinitialize the index
+            self.index = VectorStoreIndex.from_vector_store(
+                self.vector_store, embed_model=self.embed_model
+            )
+
+            # Clear added files
+            self._added_files.clear()
+
+            # Remove state file
+            if self.state_file_path.exists():
+                self.state_file_path.unlink()
+                logger.info(f"Removed state file: {self.state_file_path}")
+
+            logger.info("Knowledge base cleared successfully")
+
+        except Exception as e:
+            logger.error(f"Error clearing knowledge base: {e}")
+            raise
+
     def get_stats(self) -> Dict[str, Any]:
         """
         Get statistics about the knowledge base.
@@ -377,11 +520,32 @@ class FileKnowledgeBase:
             Dictionary containing statistics
         """
         return {
+            "kb_id": self.kb_id,
             "total_files": len(self._added_files),
             "persist_dir": self.persist_dir,
+            "state_file": str(self.state_file_path),
+            "auto_persist": self.settings.knowledge_base_config.auto_persist,
             "embedding_model": f"{self.settings.embedding_config.provider}:{self.settings.embedding_config.model}",
             "llm_model": f"{self.settings.llm_config.provider}:{self.settings.llm_config.model}",
         }
 
 
+# def main():
+#     kb = FileKnowledgeBase()
+#     kb.add_directory("/tmp/kb/knowledge/mysas")
+#     kb.add_file("/tmp/kb/knowledge/user_preference.txt")
+#     results = kb.search(
+#         "What tables are related to ACH transactions?",
+#         top_k=5,
+#         target_directories="/tmp/kb/knowledge/mysas/business/",
+#     )
+#     print(results)
+#     results = kb.search(
+#         "What tables are related to ACH transactions?",
+#         top_k=5,
+#         target_directories="/tmp/kb/knowledge/mysas/**/*.md",
+#     )
+#     print(results)
 
+# if __name__ == "__main__":
+#     main()

@@ -24,6 +24,15 @@ class EmbeddingConfig(BaseModel):
     dimension: int = 768  # Google Gemini embedding dimension
 
 
+class KnowledgeBaseConfig(BaseModel):
+    persist_root_dir: str = (
+        "./knowledge_base_data"  # Root directory for knowledge base persistence
+    )
+    auto_persist: bool = (
+        True  # Whether to automatically persist state after modifications
+    )
+
+
 class LLMConfig(BaseModel):
     provider: str = "openai"  # openai, anthropic, google
     model: str = "gpt-4-turbo"
@@ -64,6 +73,7 @@ class Settings(BaseSettings):
 
     llm_config: LLMConfig = LLMConfig()
     embedding_config: EmbeddingConfig = EmbeddingConfig()
+    knowledge_base_config: KnowledgeBaseConfig = KnowledgeBaseConfig()
 
 
 _settings: Optional[Settings] = None
