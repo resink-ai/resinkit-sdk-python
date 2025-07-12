@@ -1,3 +1,4 @@
+import os
 from typing import Any, List, Optional
 
 from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
@@ -81,12 +82,10 @@ class AgentManager:
     def create_workflow(
         self, system_prompt: str = SQL_GENERATION_SYSTEM_PROMPT, verbose: bool = True
     ) -> AgentWorkflow:
-        llm = self.get_llm()
-        self._workflow = AgentWorkflow.from_tools(
-            tools=self.tools,
-            llm=llm,
-            verbose=verbose,
-            system_prompt=system_prompt,
+        agents = self.get_agents()
+        root_agent = agents[0].name if agents else None
+        self._workflow = AgentWorkflow(
+            agents=agents, root_agent=root_agent, verbose=verbose
         )
         return self._workflow
 
@@ -95,16 +94,39 @@ class AgentManager:
             self._workflow = self.create_workflow()
         return self._workflow
 
-    def run_workflow(self, query: str) -> Any:
+    async def run_workflow(self, query: str) -> Any:
         workflow = self.get_workflow()
-        return workflow.run(query)
+        return await workflow.run(user_msg=query)
+
+
+async def main():
+    agent_manager = AgentManager()
+
+    # Test that we can create the workflow without errors
+    try:
+        workflow = agent_manager.get_workflow()
+        print("✓ AgentWorkflow created successfully!")
+        print(f"Workflow has {len(workflow.agents)} agent(s)")
+
+        # Show agent details
+        for name, agent in workflow.agents.items():
+            print(f"Agent '{name}': {type(agent).__name__}")
+            print(f"  Description: {agent.description[:80]}...")
+
+    except Exception as e:
+        print(f"✗ Error creating workflow: {e}")
+        return
+
+    try:
+        user_query = "What were the total sales for each product category in the last quarter?"
+        response = await agent_manager.run_workflow(user_query)
+        print(f"✓ Workflow executed successfully: {response}")
+    except Exception as e:
+        print(f"✗ Error running workflow: {e}")
 
 
 # Example usage
 if __name__ == "__main__":
-    agent_manager = AgentManager()
-    user_query = (
-        "What were the total sales for each product category in the last quarter?"
-    )
-    response = agent_manager.run_workflow(user_query)
-    print(response)
+    import asyncio
+
+    asyncio.run(main())

@@ -18,13 +18,36 @@ class SubModel(BaseModel):
     deep: DeepSubModel
 
 
+class EmbeddingConfig(BaseModel):
+    model: str = "text-embedding-ada-002"
+    dimension: int = 1536
+
+
 class LLMConfig(BaseModel):
     provider: str = "openai"  # openai, anthropic, google
     model: str = "gpt-4-turbo"
     temperature: float = 0.1
     max_tokens: int = 2000
-    embedding_model: str = "text-embedding-ada-002"
-    embedding_dimension: int = 1536
+
+
+# Predefined LLM configurations for different providers
+OPENAI_LLM_CONFIG = LLMConfig(
+    provider="openai", model="gpt-4o-mini", temperature=0.1, max_tokens=2000
+)
+
+ANTHROPIC_LLM_CONFIG = LLMConfig(
+    provider="anthropic",
+    model="claude-3-5-sonnet-20241022",
+    temperature=0.1,
+    max_tokens=2000,
+)
+
+GOOGLE_LLM_CONFIG = LLMConfig(
+    provider="google",
+    model="gemini-1.5-flash",
+    temperature=0.1,
+    max_tokens=2000,
+)
 
 
 class Settings(BaseSettings):
@@ -37,7 +60,9 @@ class Settings(BaseSettings):
     )
 
     sub_model: SubModel
+
     llm_config: LLMConfig = LLMConfig()
+    embedding_config: EmbeddingConfig = EmbeddingConfig()
 
 
 _settings: Optional[Settings] = None
