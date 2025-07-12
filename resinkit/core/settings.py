@@ -18,6 +18,15 @@ class SubModel(BaseModel):
     deep: DeepSubModel
 
 
+class LLMConfig(BaseModel):
+    provider: str = "openai"  # openai, anthropic, google
+    model: str = "gpt-4-turbo"
+    temperature: float = 0.1
+    max_tokens: int = 2000
+    embedding_model: str = "text-embedding-ada-002"
+    embedding_dimension: int = 1536
+
+
 class Settings(BaseSettings):
     # Pydantic's internal mechanisms specifically look for a class variable named `model_config`
     # to determine the settings source.
@@ -28,6 +37,7 @@ class Settings(BaseSettings):
     )
 
     sub_model: SubModel
+    llm_config: LLMConfig = LLMConfig()
 
 
 _settings: Optional[Settings] = None

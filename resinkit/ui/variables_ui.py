@@ -1,6 +1,8 @@
-import panel as pn
+from typing import Any, Dict, List, Optional
+
 import pandas as pd
-from typing import Dict, List, Optional, Any
+import panel as pn
+
 from ..core.resinkit_api_client import ResinkitAPIClient
 
 

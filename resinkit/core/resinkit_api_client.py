@@ -2,7 +2,7 @@
 ResInKit API Client for interacting with the ResInKit REST API.
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 
 class ResinkitAPIClient:

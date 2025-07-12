@@ -68,9 +68,7 @@ VALUES
 
         # Submit button
         self.submit_btn = pn.widgets.Button(
-            name="Submit Task", 
-            button_type="primary", 
-            width=150
+            name="Submit Task", button_type="primary", width=150
         )
         self.submit_btn.on_click(self._submit_sql_task)
 
@@ -125,11 +123,8 @@ VALUES
                 "task_timeout_seconds": timeout_seconds,
                 "job": {
                     "sql": sql_query,
-                    "pipeline": {
-                        "name": task_name,
-                        "parallelism": 1
-                    }
-                }
+                    "pipeline": {"name": task_name, "parallelism": 1},
+                },
             }
 
             print(f"[DEBUG] task_config: {task_config}")
@@ -138,7 +133,7 @@ VALUES
 
             # Submit the task
             result = self.api_client.submit_yaml_task(yaml_config)
-            
+
             # Store result and switch to result view
             self.task_result = result
             self._update_result_display()
@@ -154,9 +149,9 @@ VALUES
     def _update_result_display(self):
         """Update the result display with task information."""
         if self.task_result:
-            task_id = self.task_result.get('task_id', 'Unknown')
-            status = self.task_result.get('status', 'Unknown')
-            
+            task_id = self.task_result.get("task_id", "Unknown")
+            status = self.task_result.get("status", "Unknown")
+
             result_markdown = f"""
 ## Task Successfully Submitted!
 
@@ -174,7 +169,7 @@ Your Flink SQL task has been submitted and is being processed.
         # Reset the submit button state
         self.submit_btn.disabled = False
         self.submit_btn.name = "Submit Task"
-        
+
         # Switch to submit view
         self.current_view = "submit"
         self.param.trigger("current_view")

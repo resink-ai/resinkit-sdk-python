@@ -1,5 +1,7 @@
+from typing import Any, Dict, List, Optional, Union
+
 import pandas as pd
-from typing import Optional, Union, List, Dict, Any
+
 from resinkit.core.resinkit_api_client import ResinkitAPIClient
 
 
