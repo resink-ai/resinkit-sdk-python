@@ -19,8 +19,9 @@ class SubModel(BaseModel):
 
 
 class EmbeddingConfig(BaseModel):
-    model: str = "text-embedding-ada-002"
-    dimension: int = 1536
+    provider: str = "google"  # google, openai
+    model: str = "models/embedding-001"  # Google Gemini embedding model
+    dimension: int = 768  # Google Gemini embedding dimension
 
 
 class LLMConfig(BaseModel):
@@ -59,7 +60,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
     )
 
-    sub_model: SubModel
+    sub_model: Optional[SubModel] = None
 
     llm_config: LLMConfig = LLMConfig()
     embedding_config: EmbeddingConfig = EmbeddingConfig()

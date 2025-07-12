@@ -9,7 +9,7 @@ dependencies = [
     "pandas>=2.0.0,<3",
     "flink-sql-gateway-api==1.19.0",
     "flink-job-manager-api>=1.0.2",
-    "panel>=1.7.0",
+    "panel>=1.7.4",
     "ipywidgets>=8.1.0",
     "jupyter_bokeh>=4.0.5",
     "pydantic>=2.0.0",
@@ -17,16 +17,21 @@ dependencies = [
     "llama-index-core>=0.12.48",
     "llama-index-llms-openai>=0.4.7",
     "llama-index-llms-anthropic>=0.7.6",
-    "llama-index-llms-gemini>=0.5.0",
+    "llama-index-llms-google-genai>=0.2.4",
+    "llama-index-embeddings-openai>=0.3.1",
+    "llama-index-embeddings-google-genai>=0.2.1",
+    "llama-index-readers-file>=0.4.11",
+    "llama-index-vector-stores-chroma>=0.4.2",
+    "chromadb>=1.0.15",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest>=7.3.1,<8",
-    "black>=23.3.0,<24",
-    "isort>=5.12.0,<6",
-    "flake8>=6.0.0,<7",
-    "jupyterlab>=4.0.0",
+    "pytest>=8.0.0,<9",
+    "black>=24.0.0,<25",
+    "isort>=5.13.0,<6",
+    "flake8>=7.0.0,<8",
+    "jupyterlab>=4.3.0",
 ]
 
 [tool.hatch.build.targets.sdist]

@@ -39,16 +39,16 @@ class AgentManager:
 
     def create_google_llm(self) -> BaseLLM:
         try:
-            from llama_index.llms.gemini import Gemini
+            from llama_index.llms.google_genai import GoogleGenAI
 
-            return Gemini(
+            return GoogleGenAI(
                 model=self.settings.llm_config.model,
                 temperature=self.settings.llm_config.temperature,
                 max_tokens=self.settings.llm_config.max_tokens,
             )
         except ImportError:
             raise ImportError(
-                "Google Gemini LLM requires 'llama-index-llms-gemini' package"
+                "Google Gemini LLM requires 'llama-index-llms-google-genai' package"
             )
 
     def create_llm(self) -> BaseLLM:
@@ -118,7 +118,9 @@ async def main():
         return
 
     try:
-        user_query = "What were the total sales for each product category in the last quarter?"
+        user_query = (
+            "What were the total sales for each product category in the last quarter?"
+        )
         response = await agent_manager.run_workflow(user_query)
         print(f"✓ Workflow executed successfully: {response}")
     except Exception as e:
