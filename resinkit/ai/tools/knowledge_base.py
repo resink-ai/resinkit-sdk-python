@@ -65,13 +65,19 @@ class FileKnowledgeBase:
         self.vector_store = self._initialize_vector_store()
 
         # Initialize storage context
-        self.storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
+        self.storage_context = StorageContext.from_defaults(
+            vector_store=self.vector_store
+        )
 
         # Initialize index
-        self.index = VectorStoreIndex.from_vector_store(self.vector_store, embed_model=self.embed_model)
+        self.index = VectorStoreIndex.from_vector_store(
+            self.vector_store, embed_model=self.embed_model
+        )
 
         # Node parser for chunking
-        self.node_parser = SimpleNodeParser.from_defaults(chunk_size=1024, chunk_overlap=200)
+        self.node_parser = SimpleNodeParser.from_defaults(
+            chunk_size=1024, chunk_overlap=200
+        )
 
         # Keep track of added files to avoid duplicates
         self._added_files = set()
@@ -122,7 +128,9 @@ class FileKnowledgeBase:
 
             # Validate state compatibility
             if state_data.get("kb_id") != self.kb_id:
-                logger.warning(f"State file kb_id mismatch: expected {self.kb_id}, got {state_data.get('kb_id')}")
+                logger.warning(
+                    f"State file kb_id mismatch: expected {self.kb_id}, got {state_data.get('kb_id')}"
+                )
                 return
 
             if state_data.get("persist_dir") != str(self.persist_dir):
@@ -140,7 +148,9 @@ class FileKnowledgeBase:
                     if Path(file_path).exists():
                         valid_files.append(file_path)
                     else:
-                        logger.warning(f"Previously added file no longer exists: {file_path}")
+                        logger.warning(
+                            f"Previously added file no longer exists: {file_path}"
+                        )
 
                 self._added_files = set(valid_files)
                 logger.info(f"Loaded {len(self._added_files)} previously added files")
@@ -163,15 +173,21 @@ class FileKnowledgeBase:
         if embedding_config.provider == "google":
             api_key = os.getenv("GOOGLE_API_KEY")
             if not api_key:
-                raise ValueError("GOOGLE_API_KEY environment variable is required for Google embeddings")
+                raise ValueError(
+                    "GOOGLE_API_KEY environment variable is required for Google embeddings"
+                )
             return GoogleGenAIEmbedding(model=embedding_config.model, api_key=api_key)
         elif embedding_config.provider == "openai":
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
-                raise ValueError("OPENAI_API_KEY environment variable is required for OpenAI embeddings")
+                raise ValueError(
+                    "OPENAI_API_KEY environment variable is required for OpenAI embeddings"
+                )
             return OpenAIEmbedding(model=embedding_config.model, api_key=api_key)
         else:
-            raise ValueError(f"Unsupported embedding provider: {embedding_config.provider}")
+            raise ValueError(
+                f"Unsupported embedding provider: {embedding_config.provider}"
+            )
 
     def _get_llm(self) -> LLM:
         """Get the configured LLM."""
@@ -180,7 +196,9 @@ class FileKnowledgeBase:
         if llm_config.provider == "openai":
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
-                raise ValueError("OPENAI_API_KEY environment variable is required for OpenAI LLM")
+                raise ValueError(
+                    "OPENAI_API_KEY environment variable is required for OpenAI LLM"
+                )
             return OpenAI(
                 model=llm_config.model,
                 temperature=llm_config.temperature,
@@ -190,7 +208,9 @@ class FileKnowledgeBase:
         elif llm_config.provider == "anthropic":
             api_key = os.getenv("ANTHROPIC_API_KEY")
             if not api_key:
-                raise ValueError("ANTHROPIC_API_KEY environment variable is required for Anthropic LLM")
+                raise ValueError(
+                    "ANTHROPIC_API_KEY environment variable is required for Anthropic LLM"
+                )
             return Anthropic(
                 model=llm_config.model,
                 temperature=llm_config.temperature,
@@ -200,7 +220,9 @@ class FileKnowledgeBase:
         elif llm_config.provider == "google":
             api_key = os.getenv("GOOGLE_API_KEY")
             if not api_key:
-                raise ValueError("GOOGLE_API_KEY environment variable is required for Google LLM")
+                raise ValueError(
+                    "GOOGLE_API_KEY environment variable is required for Google LLM"
+                )
             return GoogleGenAI(
                 model=llm_config.model,
                 temperature=llm_config.temperature,
@@ -241,7 +263,9 @@ class FileKnowledgeBase:
 
         try:
             # Load document
-            documents = SimpleDirectoryReader(input_files=[str(file_path)], filename_as_id=True).load_data()
+            documents = SimpleDirectoryReader(
+                input_files=[str(file_path)], filename_as_id=True
+            ).load_data()
 
             if not documents:
                 logger.warning(f"No content loaded from {file_path}")
@@ -262,7 +286,9 @@ class FileKnowledgeBase:
             # Track added file
             self._added_files.add(str(file_path))
 
-            logger.info(f"Added file {file_path} to knowledge base ({len(nodes)} nodes)")
+            logger.info(
+                f"Added file {file_path} to knowledge base ({len(nodes)} nodes)"
+            )
 
             # Persist state after successful addition
             self._save_state()
@@ -328,7 +354,9 @@ class FileKnowledgeBase:
             logger.error(f"Error adding directory {directory_path}: {str(e)}")
             raise
 
-    def search(self, query: str, top_k: int = 5, target_directories: Optional[str] = None) -> List[NodeWithScore]:
+    def search(
+        self, query: str, top_k: int = 5, target_directories: Optional[str] = None
+    ) -> List[NodeWithScore]:
         """
         Search for relevant content in the knowledge base.
 
@@ -366,7 +394,9 @@ class FileKnowledgeBase:
             logger.error(f"Error searching knowledge base: {str(e)}")
             raise
 
-    def query_with_response(self, query: str, top_k: int = 5, target_directories: Optional[str] = None) -> str:
+    def query_with_response(
+        self, query: str, top_k: int = 5, target_directories: Optional[str] = None
+    ) -> str:
         """
         Query the knowledge base and get an AI-generated response.
 
@@ -390,10 +420,14 @@ class FileKnowledgeBase:
                 return f"Found {len(nodes)} relevant results for query: {query}"
 
             # Create query engine
-            response_synthesizer = get_response_synthesizer(llm=self.llm, response_mode="tree_summarize")
+            response_synthesizer = get_response_synthesizer(
+                llm=self.llm, response_mode="tree_summarize"
+            )
 
             query_engine = RetrieverQueryEngine(
-                retriever=VectorIndexRetriever(index=self.index, similarity_top_k=top_k),
+                retriever=VectorIndexRetriever(
+                    index=self.index, similarity_top_k=top_k
+                ),
                 response_synthesizer=response_synthesizer,
             )
 
@@ -443,7 +477,9 @@ class FileKnowledgeBase:
 
         try:
             self._save_state()
-            logger.info(f"Manually saved knowledge base state to {self.state_file_path}")
+            logger.info(
+                f"Manually saved knowledge base state to {self.state_file_path}"
+            )
         finally:
             # Restore original setting
             self.settings.knowledge_base_config.auto_persist = original_auto_persist
@@ -459,7 +495,9 @@ class FileKnowledgeBase:
             self.vector_store = self._initialize_vector_store()
 
             # Reinitialize the index
-            self.index = VectorStoreIndex.from_vector_store(self.vector_store, embed_model=self.embed_model)
+            self.index = VectorStoreIndex.from_vector_store(
+                self.vector_store, embed_model=self.embed_model
+            )
 
             # Clear added files
             self._added_files.clear()
@@ -509,12 +547,18 @@ def knowledge_files_search(
             target_pattern = target_directories
         elif isinstance(target_directories, list):
             # If list, join with comma or use the first element (llama-index tools expect a string pattern)
-            target_pattern = target_directories[0] if len(target_directories) == 1 else ",".join(target_directories)
+            target_pattern = (
+                target_directories[0]
+                if len(target_directories) == 1
+                else ",".join(target_directories)
+            )
         else:
             target_pattern = None
     else:
         target_pattern = None
-    return kb.query_with_response(query=query, top_k=top_k, target_directories=target_pattern)
+    return kb.query_with_response(
+        query=query, top_k=top_k, target_directories=target_pattern
+    )
 
 
 def get_knowledge_files_search_tool() -> FunctionTool:

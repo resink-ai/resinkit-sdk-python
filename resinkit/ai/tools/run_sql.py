@@ -23,10 +23,16 @@ class SQLQueryResult(BaseModel):
     """Result of SQL query execution."""
 
     success: bool = Field(..., description="Whether the query executed successfully")
-    data: Optional[List[Dict[str, Any]]] = Field(None, description="Query results as list of dictionaries")
+    data: Optional[List[Dict[str, Any]]] = Field(
+        None, description="Query results as list of dictionaries"
+    )
     row_count: int = Field(0, description="Number of rows returned")
-    execution_time_ms: float = Field(0.0, description="Query execution time in milliseconds")
-    error_message: Optional[str] = Field(None, description="Error message if query failed")
+    execution_time_ms: float = Field(
+        0.0, description="Query execution time in milliseconds"
+    )
+    error_message: Optional[str] = Field(
+        None, description="Error message if query failed"
+    )
     query_executed: str = Field(..., description="The actual query that was executed")
 
 
@@ -153,13 +159,21 @@ class SQLCommandTool:
             conn.close()
 
             return SQLQueryResult(
-                success=True, data=data, row_count=len(data), execution_time_ms=execution_time, query_executed=query
+                success=True,
+                data=data,
+                row_count=len(data),
+                execution_time_ms=execution_time,
+                query_executed=query,
             )
 
         except Exception as e:
             execution_time = (time.time() - start_time) * 1000
             return SQLQueryResult(
-                success=False, row_count=0, execution_time_ms=execution_time, error_message=str(e), query_executed=query
+                success=False,
+                row_count=0,
+                execution_time_ms=execution_time,
+                error_message=str(e),
+                query_executed=query,
             )
 
     def _execute_sql_query(self, query: str, explanation: str) -> str:
@@ -175,7 +189,9 @@ class SQLCommandTool:
 
         if result.success:
             # Format successful result for agent consumption
-            response = f"Query executed successfully in {result.execution_time_ms:.1f}ms.\n"
+            response = (
+                f"Query executed successfully in {result.execution_time_ms:.1f}ms.\n"
+            )
             response += f"Returned {result.row_count} rows.\n"
 
             if result.data:

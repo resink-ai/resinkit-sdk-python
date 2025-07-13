@@ -44,6 +44,11 @@ include = ["resinkit"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = ["tests"]
+
 [tool.black]
 line-length = 120
 target-version = ['py37']

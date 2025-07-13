@@ -126,7 +126,9 @@ class TasksManagementUI(param.Parameterized):
                 except Exception as e:
                     self._show_error(f"Error cancelling task {task_id}: {str(e)}")
 
-            self._show_info(f"Successfully initiated cancellation for {success_count} out of {len(task_ids)} tasks.")
+            self._show_info(
+                f"Successfully initiated cancellation for {success_count} out of {len(task_ids)} tasks."
+            )
             self._refresh_tasks(None)
         except Exception as e:
             self._show_error(f"Error processing task cancellation: {str(e)}")
@@ -150,7 +152,9 @@ class TasksManagementUI(param.Parameterized):
                 except Exception as e:
                     self._show_error(f"Error deleting task {task_id}: {str(e)}")
 
-            self._show_info(f"Successfully deleted {success_count} out of {len(task_ids)} tasks.")
+            self._show_info(
+                f"Successfully deleted {success_count} out of {len(task_ids)} tasks."
+            )
             self._refresh_tasks(None)
         except Exception as e:
             self._show_error(f"Error processing task deletion: {str(e)}")
@@ -251,7 +255,9 @@ job:
             sizing_mode="stretch_width",
         )
 
-        self.submit_btn = pn.widgets.Button(name="Submit Task", button_type="primary", width=150)
+        self.submit_btn = pn.widgets.Button(
+            name="Submit Task", button_type="primary", width=150
+        )
         self.submit_btn.on_click(self._submit_yaml_task)
 
         cancel_btn = pn.widgets.Button(name="Cancel", button_type="default", width=100)
@@ -280,7 +286,9 @@ job:
             result = self.api_client.submit_yaml_task(yaml_config)
 
             # Show success and go back to task list
-            self._show_info(f"Task submitted successfully. Task ID: {result.get('task_id')}")
+            self._show_info(
+                f"Task submitted successfully. Task ID: {result.get('task_id')}"
+            )
             self._back_to_list(None)
             self._refresh_tasks(None)
         except Exception as e:
@@ -328,7 +336,9 @@ job:
             sizing_mode="stretch_width",
         )
 
-        self.task_results = pn.pane.JSON(object={}, depth=2, height=300, sizing_mode="stretch_width")
+        self.task_results = pn.pane.JSON(
+            object={}, depth=2, height=300, sizing_mode="stretch_width"
+        )
 
         tabs = pn.Tabs(
             ("Summary", pn.Column(self.task_info_pane)),
