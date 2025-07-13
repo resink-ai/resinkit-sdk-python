@@ -60,6 +60,15 @@ GOOGLE_LLM_CONFIG = LLMConfig(
 )
 
 
+class ResinkitConfig(BaseModel):
+    """Configuration for ResinKit API client and core functionality."""
+
+    base_url: str = "http://localhost:8080"
+    session_id: Optional[str] = None
+    access_token: Optional[str] = None
+    sql_gateway_url: Optional[str] = None
+
+
 class Settings(BaseSettings):
     # Pydantic's internal mechanisms specifically look for a class variable named `model_config`
     # to determine the settings source.
@@ -67,13 +76,28 @@ class Settings(BaseSettings):
         env_file=(".env.common", f".env.{_CURRENT_ENV}"),
         env_nested_delimiter="__",
         env_file_encoding="utf-8",
+        case_sensitive=False,
     )
 
     sub_model: Optional[SubModel] = None
 
+    # ResinKit configuration
+    resinkit: ResinkitConfig = ResinkitConfig()
+
+    # AI configuration
     llm_config: LLMConfig = LLMConfig()
     embedding_config: EmbeddingConfig = EmbeddingConfig()
     knowledge_base_config: KnowledgeBaseConfig = KnowledgeBaseConfig()
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Override with environment variables if they exist
+        if os.getenv("RESINKIT_BASE_URL"):
+            self.resinkit.base_url = os.getenv("RESINKIT_BASE_URL")
+        if os.getenv("RESINKIT_SESSION_ID"):
+            self.resinkit.session_id = os.getenv("RESINKIT_SESSION_ID")
+        if os.getenv("RESINKIT_ACCESS_TOKEN"):
+            self.resinkit.access_token = os.getenv("RESINKIT_ACCESS_TOKEN")
 
 
 _settings: Optional[Settings] = None
@@ -84,3 +108,52 @@ def get_settings() -> Settings:
     if _settings is None:
         _settings = Settings()
     return _settings
+
+
+def update_settings(
+    base_url: Optional[str] = None,
+    session_id: Optional[str] = None,
+    access_token: Optional[str] = None,
+    sql_gateway_url: Optional[str] = None,
+    **kwargs,
+) -> Settings:
+    """
+    Update global settings with new configuration values.
+
+    Args:
+        base_url: Base URL for the ResinKit API
+        session_id: Session ID for authentication
+        access_token: Personal access token for authentication
+        sql_gateway_url: SQL Gateway URL
+        **kwargs: Additional settings to update
+
+    Returns:
+        Updated Settings instance
+    """
+    global _settings
+
+    # Get current settings or create new ones
+    current_settings = get_settings()
+
+    # Update ResinKit configuration
+    if base_url is not None:
+        current_settings.resinkit.base_url = base_url
+    if session_id is not None:
+        current_settings.resinkit.session_id = session_id
+    if access_token is not None:
+        current_settings.resinkit.access_token = access_token
+    if sql_gateway_url is not None:
+        current_settings.resinkit.sql_gateway_url = sql_gateway_url
+
+    # Update any other settings passed via kwargs
+    for key, value in kwargs.items():
+        if hasattr(current_settings, key):
+            setattr(current_settings, key, value)
+
+    return current_settings
+
+
+def reset_settings() -> None:
+    """Reset the global settings instance."""
+    global _settings
+    _settings = None

@@ -44,3 +44,7 @@ rsk.config(base_url="http://localhost:8080", access_token="token")
 instance = rsk.Resinkit(base_url="...")
 client = rsk.ResinkitAPIClient(base_url="...")
 ```
+
+## Tests
+
+The project relies mainly on end to end tests (e2e) test. Follow [end_to_end_test_guide.md](./tests/e2e/end_to_end_test_guide.md) on how to implement and run e2e tests.

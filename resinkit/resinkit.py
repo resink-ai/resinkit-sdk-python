@@ -1,5 +1,6 @@
 from typing import Optional
 
+from resinkit.core.settings import get_settings
 from resinkit.core.task import Task
 from resinkit.ui.sql_task_ui import SQLTaskUI
 from resinkit.ui.tasks_management_ui import ResinkitAPIClient, TasksManagementUI
@@ -14,12 +15,18 @@ class Resinkit:
         sql_gateway_url: Optional[str] = None,
         base_url: Optional[str] = None,
     ):
-        self._base_url = base_url
-        self._sql_gateway_url = sql_gateway_url
-        self._resinkit_session_id = resinkit_session
-        self._personal_access_token = personal_access_token
+        # Get settings and use them as defaults, but allow override via parameters
+        settings = get_settings()
+
+        self._base_url = base_url or settings.resinkit.base_url
+        self._sql_gateway_url = sql_gateway_url or settings.resinkit.sql_gateway_url
+        self._resinkit_session_id = resinkit_session or settings.resinkit.session_id
+        self._personal_access_token = (
+            personal_access_token or settings.resinkit.access_token
+        )
+
         self.api_client = ResinkitAPIClient(
-            base_url=base_url,
+            base_url=self._base_url,
             api_key=self._personal_access_token,
         )
         self._ui_setup_done = False

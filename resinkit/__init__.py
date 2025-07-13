@@ -3,6 +3,7 @@ import os
 from typing import Any, Optional
 
 from .core.resinkit_api_client import ResinkitAPIClient
+from .core.settings import get_settings, update_settings
 from .core.task import Task
 from .resinkit import Resinkit
 
@@ -15,14 +16,8 @@ def _get_default_instance() -> Resinkit:
     """Get or create the default Resinkit instance."""
     global _default_instance
     if _default_instance is None:
-        base_url = os.getenv("RESINKIT_BASE_URL", "http://localhost:8603")
-        session_id = os.getenv("RESINKIT_SESSION_ID")
-        access_token = os.getenv("RESINKIT_ACCESS_TOKEN", "pat_cnk8_")
-        _default_instance = Resinkit(
-            base_url=base_url,
-            resinkit_session=session_id,
-            personal_access_token=access_token,
-        )
+        # Use settings instead of direct environment variable access
+        _default_instance = Resinkit()
     return _default_instance
 
 
@@ -98,16 +93,8 @@ def get_task(task_id: str):
 
 
 def configure(base_url=None, session_id=None, access_token=None):
-    """Configure the default resinkit instance."""
-    global _default_instance, _agent_manager
-    if any([base_url, session_id, access_token]):
-        _default_instance = Resinkit(
-            base_url=base_url
-            or os.getenv("RESINKIT_BASE_URL", "http://localhost:8080"),
-            resinkit_session=session_id or os.getenv("RESINKIT_SESSION_ID"),
-            personal_access_token=access_token or os.getenv("RESINKIT_ACCESS_TOKEN"),
-        )
-        _agent_manager = None
+    """Configure the default resinkit instance (legacy method)."""
+    return config(base_url=base_url, session_id=session_id, access_token=access_token)
 
 
 def config(
@@ -116,6 +103,8 @@ def config(
     access_token: Optional[str] = None,
     resinkit_session: Optional[str] = None,
     personal_access_token: Optional[str] = None,
+    sql_gateway_url: Optional[str] = None,
+    **kwargs,
 ):
     """
     Configure the default resinkit instance with improved parameter naming.
@@ -126,6 +115,8 @@ def config(
         access_token: Personal access token for authentication (alias for personal_access_token)
         resinkit_session: ResinKit session ID for authentication
         personal_access_token: Personal access token for authentication
+        sql_gateway_url: SQL Gateway URL
+        **kwargs: Additional configuration parameters
 
     Usage:
         rsk.config(base_url="http://localhost:8080", access_token="your_token")
@@ -138,26 +129,34 @@ def config(
     final_access_token = access_token or personal_access_token
 
     # Only reconfigure if at least one parameter is provided
-    if any([base_url, final_session_id, final_access_token]):
-        _default_instance = Resinkit(
-            base_url=base_url
-            or os.getenv("RESINKIT_BASE_URL", "http://localhost:8080"),
-            resinkit_session=final_session_id or os.getenv("RESINKIT_SESSION_ID"),
-            personal_access_token=final_access_token
-            or os.getenv("RESINKIT_ACCESS_TOKEN"),
+    if any([base_url, final_session_id, final_access_token, sql_gateway_url]) or kwargs:
+        # Update settings first
+        update_settings(
+            base_url=base_url,
+            session_id=final_session_id,
+            access_token=final_access_token,
+            sql_gateway_url=sql_gateway_url,
+            **kwargs,
         )
-        # Reset agent manager when configuration changes
+
+        # Reset instances to pick up new settings
+        _default_instance = None
         _agent_manager = None
-        print(f"✓ ResinKit configured with base_url: {_default_instance._base_url}")
+
+        # Create new instance to confirm configuration
+        instance = _get_default_instance()
+        print(f"✓ ResinKit configured with base_url: {instance._base_url}")
     else:
         # Show current configuration if no parameters provided
-        instance = _get_default_instance()
+        settings = get_settings()
         print("Current ResinKit configuration:")
-        print(f"  Base URL: {instance._base_url}")
-        print(f"  Session ID: {'***' if instance._resinkit_session_id else 'Not set'}")
+        print(f"  Base URL: {settings.resinkit.base_url}")
+        print(f"  Session ID: {'***' if settings.resinkit.session_id else 'Not set'}")
         print(
-            f"  Access Token: {'***' if instance._personal_access_token else 'Not set'}"
+            f"  Access Token: {'***' if settings.resinkit.access_token else 'Not set'}"
         )
+        if settings.resinkit.sql_gateway_url:
+            print(f"  SQL Gateway URL: {settings.resinkit.sql_gateway_url}")
 
 
 # Import this module and make it callable
