@@ -19,17 +19,13 @@ class VariablesUI:
         self.variables = []
 
         # Initialize API client
-        self.api_client = ResinkitAPIClient(
-            base_url=base_url, api_key=personal_access_token, session_id=session_id
-        )
+        self.api_client = ResinkitAPIClient(base_url=base_url, api_key=personal_access_token, session_id=session_id)
 
         # Initialize Panel components
         pn.extension()
 
         # Create main UI components
-        self.variables_table = pn.widgets.Tabulator(
-            height=400, layout="fit_columns", sizing_mode="stretch_width"
-        )
+        self.variables_table = pn.widgets.Tabulator(height=400, layout="fit_columns", sizing_mode="stretch_width")
 
         # Configure table columns
         self.variables_table.formatters = {"actions": {"type": "html"}}
@@ -41,20 +37,12 @@ class VariablesUI:
         }
 
         # Updated buttons with icons
-        self.add_button = pn.widgets.Button(
-            name="+ Add Variable", button_type="primary", width=150
-        )
-        self.refresh_button = pn.widgets.Button(
-            name="↻ Refresh", button_type="default", width=100
-        )
+        self.add_button = pn.widgets.Button(name="+ Add Variable", button_type="primary", width=150)
+        self.refresh_button = pn.widgets.Button(name="↻ Refresh", button_type="default", width=100)
 
         # Form components
-        self.name_input = pn.widgets.TextInput(
-            name="Name", placeholder="Enter variable name"
-        )
-        self.value_input = pn.widgets.TextInput(
-            name="Value", placeholder="Enter variable value"
-        )
+        self.name_input = pn.widgets.TextInput(name="Name", placeholder="Enter variable name")
+        self.value_input = pn.widgets.TextInput(name="Value", placeholder="Enter variable value")
         self.description_input = pn.widgets.TextAreaInput(
             name="Description", placeholder="Enter description", max_length=500, rows=3
         )
@@ -63,9 +51,7 @@ class VariablesUI:
 
         # Variable value view components
         self.var_name_display = pn.widgets.StaticText(name="Name")
-        self.var_value_display = pn.widgets.TextAreaInput(
-            name="Value", disabled=True, rows=3
-        )
+        self.var_value_display = pn.widgets.TextAreaInput(name="Value", disabled=True, rows=3)
         self.var_description_display = pn.widgets.StaticText(name="Description")
         self.back_button = pn.widgets.Button(name="Back", button_type="default")
         self.back_button.on_click(self._show_variables_table)
@@ -142,9 +128,7 @@ class VariablesUI:
         if self.variables:
             self.variables_table.value = pd.DataFrame(self.variables)
         else:
-            self.variables_table.value = pd.DataFrame(
-                columns=["name", "description", "actions"]
-            )
+            self.variables_table.value = pd.DataFrame(columns=["name", "description", "actions"])
 
         # Create JS callback for button clicks
         self.variables_table.on_click(self._table_action_callback)
@@ -153,10 +137,7 @@ class VariablesUI:
         """Handle table row action button clicks"""
         if event.column == "actions" and event.value:
             # Check if DataFrame has data and row index is valid
-            if (
-                self.variables_table.value is not None
-                and len(self.variables_table.value) > 0
-            ):
+            if self.variables_table.value is not None and len(self.variables_table.value) > 0:
                 try:
                     # Get variable name from the DataFrame
                     var_name = self.variables_table.value.iloc[event.row]["name"]

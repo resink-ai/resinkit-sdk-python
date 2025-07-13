@@ -33,9 +33,7 @@ class AgentManager:
                 max_tokens=self.settings.llm_config.max_tokens,
             )
         except ImportError:
-            raise ImportError(
-                "Anthropic LLM requires 'llama-index-llms-anthropic' package"
-            )
+            raise ImportError("Anthropic LLM requires 'llama-index-llms-anthropic' package")
 
     def create_google_llm(self) -> BaseLLM:
         try:
@@ -47,9 +45,7 @@ class AgentManager:
                 max_tokens=self.settings.llm_config.max_tokens,
             )
         except ImportError:
-            raise ImportError(
-                "Google Gemini LLM requires 'llama-index-llms-google-genai' package"
-            )
+            raise ImportError("Google Gemini LLM requires 'llama-index-llms-google-genai' package")
 
     def create_llm(self) -> BaseLLM:
         provider = self.settings.llm_config.provider.lower()
@@ -79,14 +75,10 @@ class AgentManager:
             )
         ]
 
-    def create_workflow(
-        self, system_prompt: str = SQL_GENERATION_SYSTEM_PROMPT, verbose: bool = True
-    ) -> AgentWorkflow:
+    def create_workflow(self, system_prompt: str = SQL_GENERATION_SYSTEM_PROMPT, verbose: bool = True) -> AgentWorkflow:
         agents = self.get_agents()
         root_agent = agents[0].name if agents else None
-        self._workflow = AgentWorkflow(
-            agents=agents, root_agent=root_agent, verbose=verbose
-        )
+        self._workflow = AgentWorkflow(agents=agents, root_agent=root_agent, verbose=verbose)
         return self._workflow
 
     def get_workflow(self) -> AgentWorkflow:
@@ -118,9 +110,7 @@ async def main():
         return
 
     try:
-        user_query = (
-            "What were the total sales for each product category in the last quarter?"
-        )
+        user_query = "What were the total sales for each product category in the last quarter?"
         response = await agent_manager.run_workflow(user_query)
         print(f"✓ Workflow executed successfully: {response}")
     except Exception as e:

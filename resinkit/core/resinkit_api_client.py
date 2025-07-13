@@ -54,9 +54,7 @@ class ResinkitAPIClient:
         import requests
 
         endpoint = f"{self.base_url}/api/v1/agent/tasks"
-        response = requests.post(
-            endpoint, headers=self._get_headers(), json=task_config
-        )
+        response = requests.post(endpoint, headers=self._get_headers(), json=task_config)
         response.raise_for_status()
         return response.json()
 
@@ -80,9 +78,7 @@ class ResinkitAPIClient:
         response.raise_for_status()
         return response.json()
 
-    def cancel_task(
-        self, task_id: str, reason: Optional[str] = None, force: bool = False
-    ) -> Dict[str, Any]:
+    def cancel_task(self, task_id: str, reason: Optional[str] = None, force: bool = False) -> Dict[str, Any]:
         """Cancel a task."""
         import requests
 
@@ -130,9 +126,7 @@ class ResinkitAPIClient:
         import requests
 
         endpoint = f"{self.base_url}/api/v1/agent/variables"
-        response = requests.get(
-            endpoint, headers=self._get_headers(), cookies=self._get_cookies()
-        )
+        response = requests.get(endpoint, headers=self._get_headers(), cookies=self._get_cookies())
         response.raise_for_status()
         return response.json()
 
@@ -141,15 +135,11 @@ class ResinkitAPIClient:
         import requests
 
         endpoint = f"{self.base_url}/api/v1/agent/variables/{name}"
-        response = requests.get(
-            endpoint, headers=self._get_headers(), cookies=self._get_cookies()
-        )
+        response = requests.get(endpoint, headers=self._get_headers(), cookies=self._get_cookies())
         response.raise_for_status()
         return response.json()
 
-    def create_variable(
-        self, name: str, value: str, description: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def create_variable(self, name: str, value: str, description: Optional[str] = None) -> Dict[str, Any]:
         """Create a new variable."""
         import requests
 
@@ -172,9 +162,7 @@ class ResinkitAPIClient:
         import requests
 
         endpoint = f"{self.base_url}/api/v1/agent/variables/{name}"
-        response = requests.delete(
-            endpoint, headers=self._get_headers(), cookies=self._get_cookies()
-        )
+        response = requests.delete(endpoint, headers=self._get_headers(), cookies=self._get_cookies())
         response.raise_for_status()
         if response.status_code == 204:
             return {"message": f"Variable '{name}' deleted successfully."}

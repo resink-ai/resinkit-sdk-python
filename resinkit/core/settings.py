@@ -25,12 +25,8 @@ class EmbeddingConfig(BaseModel):
 
 
 class KnowledgeBaseConfig(BaseModel):
-    persist_root_dir: str = (
-        "./knowledge_base_data"  # Root directory for knowledge base persistence
-    )
-    auto_persist: bool = (
-        True  # Whether to automatically persist state after modifications
-    )
+    persist_root_dir: str = "./knowledge_base_data"  # Root directory for knowledge base persistence
+    auto_persist: bool = True  # Whether to automatically persist state after modifications
 
 
 class LLMConfig(BaseModel):
@@ -41,9 +37,7 @@ class LLMConfig(BaseModel):
 
 
 # Predefined LLM configurations for different providers
-OPENAI_LLM_CONFIG = LLMConfig(
-    provider="openai", model="gpt-4o-mini", temperature=0.1, max_tokens=2000
-)
+OPENAI_LLM_CONFIG = LLMConfig(provider="openai", model="gpt-4o-mini", temperature=0.1, max_tokens=2000)
 
 ANTHROPIC_LLM_CONFIG = LLMConfig(
     provider="anthropic",

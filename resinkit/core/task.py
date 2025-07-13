@@ -73,9 +73,7 @@ class Task:
         task_info = self.get_task_info()
 
         if task_info.get("status") != "COMPLETED":
-            raise RuntimeError(
-                f"Task {self.task_id} is not completed. Current status: {task_info.get('status')}"
-            )
+            raise RuntimeError(f"Task {self.task_id} is not completed. Current status: {task_info.get('status')}")
 
         if task_info.get("error_info"):
             error_info = task_info["error_info"]
@@ -95,14 +93,10 @@ class Task:
         is_query_list = result_data.get("is_query", [])
 
         if not results_list or not is_query_list:
-            raise ValueError(
-                f"No results or is_query information found for task {self.task_id}"
-            )
+            raise ValueError(f"No results or is_query information found for task {self.task_id}")
 
         if len(results_list) != len(is_query_list):
-            raise ValueError(
-                f"Mismatch between results and is_query arrays for task {self.task_id}"
-            )
+            raise ValueError(f"Mismatch between results and is_query arrays for task {self.task_id}")
 
         # Filter for query results only
         query_results = []

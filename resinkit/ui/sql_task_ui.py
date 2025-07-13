@@ -67,9 +67,7 @@ VALUES
         )
 
         # Submit button
-        self.submit_btn = pn.widgets.Button(
-            name="Submit Task", button_type="primary", width=150
-        )
+        self.submit_btn = pn.widgets.Button(name="Submit Task", button_type="primary", width=150)
         self.submit_btn.on_click(self._submit_sql_task)
 
         return pn.Column(
