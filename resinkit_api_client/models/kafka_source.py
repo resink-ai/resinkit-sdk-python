@@ -113,7 +113,9 @@ class KafkaSource:
                 return data
             return cast(Union[None, Unset, str], data)
 
-        schema_registry_url = _parse_schema_registry_url(d.pop("schema_registry_url", UNSET))
+        schema_registry_url = _parse_schema_registry_url(
+            d.pop("schema_registry_url", UNSET)
+        )
 
         def _parse_sasl_username(data: object) -> Union[None, Unset, str]:
             if data is None:

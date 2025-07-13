@@ -7,8 +7,6 @@ import yaml
 
 from resinkit.core.resinkit_api_client import ResinkitAPIClient
 
-pn.extension("codeeditor")
-
 
 class TasksManagementUI(param.Parameterized):
     """Panel UI for managing ResInKit tasks."""

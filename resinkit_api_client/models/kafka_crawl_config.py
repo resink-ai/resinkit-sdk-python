@@ -87,7 +87,9 @@ class KafkaCrawlConfig:
         _topics = d.pop("topics")
         for topics_item_data in _topics:
 
-            def _parse_topics_item(data: object) -> Union["TopicRegexSelection", "TopicSelection"]:
+            def _parse_topics_item(
+                data: object,
+            ) -> Union["TopicRegexSelection", "TopicSelection"]:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()

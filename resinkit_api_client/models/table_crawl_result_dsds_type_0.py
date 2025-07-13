@@ -15,7 +15,9 @@ T = TypeVar("T", bound="TableCrawlResultDsdsType0")
 class TableCrawlResultDsdsType0:
     """ """
 
-    additional_properties: dict[str, "ColumnDSDS"] = _attrs_field(init=False, factory=dict)
+    additional_properties: dict[str, "ColumnDSDS"] = _attrs_field(
+        init=False, factory=dict
+    )
 
     def to_dict(self) -> dict[str, Any]:
         field_dict: dict[str, Any] = {}

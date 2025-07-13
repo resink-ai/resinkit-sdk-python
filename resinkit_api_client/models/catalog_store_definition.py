@@ -52,7 +52,9 @@ class CatalogStoreDefinition:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.catalog_store_definition_options import CatalogStoreDefinitionOptions
+        from ..models.catalog_store_definition_options import (
+            CatalogStoreDefinitionOptions,
+        )
 
         d = dict(src_dict)
         name = d.pop("name")

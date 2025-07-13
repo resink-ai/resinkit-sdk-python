@@ -22,6 +22,19 @@ class Resinkit:
             base_url=base_url,
             api_key=self._personal_access_token,
         )
+        self._ui_setup_done = False
+
+    def ui_setup(self):
+        """
+        Setup Panel extensions required for UI components.
+        This method is called automatically before displaying any UI components.
+        """
+        if not self._ui_setup_done:
+            import panel as pn
+
+            pn.extension("tabulator")
+            pn.extension("codeeditor")
+            self._ui_setup_done = True
 
     def show_vars_ui(self) -> None:
         """
@@ -31,6 +44,7 @@ class Resinkit:
         Returns:
             A Panel UI component that can be displayed in a notebook.
         """
+        self.ui_setup()
         ui = VariablesUI(
             base_url=self._base_url,
             session_id=self._resinkit_session_id,
@@ -46,6 +60,7 @@ class Resinkit:
         Returns:
             A Panel UI component that can be displayed in a notebook.
         """
+        self.ui_setup()
         ui = TasksManagementUI(api_client=self.api_client)
         return ui.show()
 
@@ -68,5 +83,6 @@ class Resinkit:
         """
         Display a UI for submitting Flink SQL tasks.
         """
+        self.ui_setup()
         ui = SQLTaskUI(api_client=self.api_client)
         return ui.show()

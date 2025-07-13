@@ -15,7 +15,9 @@ T = TypeVar("T", bound="KafkaTopicCrawlResultFieldAnalysisType0")
 class KafkaTopicCrawlResultFieldAnalysisType0:
     """ """
 
-    additional_properties: dict[str, "KafkaFieldAnalysis"] = _attrs_field(init=False, factory=dict)
+    additional_properties: dict[str, "KafkaFieldAnalysis"] = _attrs_field(
+        init=False, factory=dict
+    )
 
     def to_dict(self) -> dict[str, Any]:
         field_dict: dict[str, Any] = {}
@@ -37,7 +39,9 @@ class KafkaTopicCrawlResultFieldAnalysisType0:
 
             additional_properties[prop_name] = additional_property
 
-        kafka_topic_crawl_result_field_analysis_type_0.additional_properties = additional_properties
+        kafka_topic_crawl_result_field_analysis_type_0.additional_properties = (
+            additional_properties
+        )
         return kafka_topic_crawl_result_field_analysis_type_0
 
     @property

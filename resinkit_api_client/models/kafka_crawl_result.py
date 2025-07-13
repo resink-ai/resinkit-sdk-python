@@ -50,7 +50,9 @@ class KafkaCrawlResult:
         from ..models.kafka_topic_crawl_result import KafkaTopicCrawlResult
 
         d = dict(src_dict)
-        retrieval_metadata = KafkaRetrievalMetadata.from_dict(d.pop("retrieval_metadata"))
+        retrieval_metadata = KafkaRetrievalMetadata.from_dict(
+            d.pop("retrieval_metadata")
+        )
 
         topics = []
         _topics = d.pop("topics")

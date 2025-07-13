@@ -8,7 +8,9 @@ from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
     from ..models.kafka_inferred_schema import KafkaInferredSchema
-    from ..models.kafka_topic_crawl_result_field_analysis_type_0 import KafkaTopicCrawlResultFieldAnalysisType0
+    from ..models.kafka_topic_crawl_result_field_analysis_type_0 import (
+        KafkaTopicCrawlResultFieldAnalysisType0,
+    )
 
 
 T = TypeVar("T", bound="KafkaTopicCrawlResult")
@@ -30,12 +32,16 @@ class KafkaTopicCrawlResult:
     partitions: int
     sample_messages: list[Any]
     inferred_schema: Union["KafkaInferredSchema", None, Unset] = UNSET
-    field_analysis: Union["KafkaTopicCrawlResultFieldAnalysisType0", None, Unset] = UNSET
+    field_analysis: Union["KafkaTopicCrawlResultFieldAnalysisType0", None, Unset] = (
+        UNSET
+    )
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.kafka_inferred_schema import KafkaInferredSchema
-        from ..models.kafka_topic_crawl_result_field_analysis_type_0 import KafkaTopicCrawlResultFieldAnalysisType0
+        from ..models.kafka_topic_crawl_result_field_analysis_type_0 import (
+            KafkaTopicCrawlResultFieldAnalysisType0,
+        )
 
         topic_name = self.topic_name
 
@@ -78,7 +84,9 @@ class KafkaTopicCrawlResult:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.kafka_inferred_schema import KafkaInferredSchema
-        from ..models.kafka_topic_crawl_result_field_analysis_type_0 import KafkaTopicCrawlResultFieldAnalysisType0
+        from ..models.kafka_topic_crawl_result_field_analysis_type_0 import (
+            KafkaTopicCrawlResultFieldAnalysisType0,
+        )
 
         d = dict(src_dict)
         topic_name = d.pop("topic_name")
@@ -87,7 +95,9 @@ class KafkaTopicCrawlResult:
 
         sample_messages = cast(list[Any], d.pop("sample_messages"))
 
-        def _parse_inferred_schema(data: object) -> Union["KafkaInferredSchema", None, Unset]:
+        def _parse_inferred_schema(
+            data: object,
+        ) -> Union["KafkaInferredSchema", None, Unset]:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -104,7 +114,9 @@ class KafkaTopicCrawlResult:
 
         inferred_schema = _parse_inferred_schema(d.pop("inferred_schema", UNSET))
 
-        def _parse_field_analysis(data: object) -> Union["KafkaTopicCrawlResultFieldAnalysisType0", None, Unset]:
+        def _parse_field_analysis(
+            data: object,
+        ) -> Union["KafkaTopicCrawlResultFieldAnalysisType0", None, Unset]:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -112,12 +124,16 @@ class KafkaTopicCrawlResult:
             try:
                 if not isinstance(data, dict):
                     raise TypeError()
-                field_analysis_type_0 = KafkaTopicCrawlResultFieldAnalysisType0.from_dict(data)
+                field_analysis_type_0 = (
+                    KafkaTopicCrawlResultFieldAnalysisType0.from_dict(data)
+                )
 
                 return field_analysis_type_0
             except:  # noqa: E722
                 pass
-            return cast(Union["KafkaTopicCrawlResultFieldAnalysisType0", None, Unset], data)
+            return cast(
+                Union["KafkaTopicCrawlResultFieldAnalysisType0", None, Unset], data
+            )
 
         field_analysis = _parse_field_analysis(d.pop("field_analysis", UNSET))
 

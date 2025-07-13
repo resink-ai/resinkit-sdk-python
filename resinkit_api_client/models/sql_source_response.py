@@ -7,7 +7,9 @@ from attrs import field as _attrs_field
 from ..models.database_kind import DatabaseKind
 
 if TYPE_CHECKING:
-    from ..models.sql_source_response_extra_params_type_0 import SqlSourceResponseExtraParamsType0
+    from ..models.sql_source_response_extra_params_type_0 import (
+        SqlSourceResponseExtraParamsType0,
+    )
 
 
 T = TypeVar("T", bound="SqlSourceResponse")
@@ -44,7 +46,9 @@ class SqlSourceResponse:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.sql_source_response_extra_params_type_0 import SqlSourceResponseExtraParamsType0
+        from ..models.sql_source_response_extra_params_type_0 import (
+            SqlSourceResponseExtraParamsType0,
+        )
 
         name = self.name
 
@@ -94,7 +98,9 @@ class SqlSourceResponse:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.sql_source_response_extra_params_type_0 import SqlSourceResponseExtraParamsType0
+        from ..models.sql_source_response_extra_params_type_0 import (
+            SqlSourceResponseExtraParamsType0,
+        )
 
         d = dict(src_dict)
         name = d.pop("name")
@@ -111,7 +117,9 @@ class SqlSourceResponse:
 
         query_timeout = d.pop("query_timeout")
 
-        def _parse_extra_params(data: object) -> Union["SqlSourceResponseExtraParamsType0", None]:
+        def _parse_extra_params(
+            data: object,
+        ) -> Union["SqlSourceResponseExtraParamsType0", None]:
             if data is None:
                 return data
             try:

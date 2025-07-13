@@ -99,7 +99,9 @@ class TopicSelection:
 
         sample_messages = _parse_sample_messages(d.pop("sample_messages", UNSET))
 
-        def _parse_sampling_strategy(data: object) -> Union[None, SamplingStrategy, Unset]:
+        def _parse_sampling_strategy(
+            data: object,
+        ) -> Union[None, SamplingStrategy, Unset]:
             if data is None:
                 return data
             if isinstance(data, Unset):

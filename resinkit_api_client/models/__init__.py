@@ -2,7 +2,9 @@
 
 from .analysis_config import AnalysisConfig
 from .attribute_detection_config import AttributeDetectionConfig
-from .body_upload_jar_api_v1_flink_lib_upload_post import BodyUploadJarApiV1FlinkLibUploadPost
+from .body_upload_jar_api_v1_flink_lib_upload_post import (
+    BodyUploadJarApiV1FlinkLibUploadPost,
+)
 from .catalog_request import CatalogRequest
 from .catalog_request_properties import CatalogRequestProperties
 from .catalog_response import CatalogResponse
@@ -31,11 +33,15 @@ from .kafka_inferred_schema import KafkaInferredSchema
 from .kafka_inferred_schema_properties_type_0 import KafkaInferredSchemaPropertiesType0
 from .kafka_json_schema_property import KafkaJsonSchemaProperty
 from .kafka_json_schema_property_items_type_0 import KafkaJsonSchemaPropertyItemsType0
-from .kafka_json_schema_property_properties_type_0 import KafkaJsonSchemaPropertyPropertiesType0
+from .kafka_json_schema_property_properties_type_0 import (
+    KafkaJsonSchemaPropertyPropertiesType0,
+)
 from .kafka_retrieval_metadata import KafkaRetrievalMetadata
 from .kafka_source import KafkaSource
 from .kafka_topic_crawl_result import KafkaTopicCrawlResult
-from .kafka_topic_crawl_result_field_analysis_type_0 import KafkaTopicCrawlResultFieldAnalysisType0
+from .kafka_topic_crawl_result_field_analysis_type_0 import (
+    KafkaTopicCrawlResultFieldAnalysisType0,
+)
 from .log_entry import LogEntry
 from .retrieval_metadata import RetrievalMetadata
 from .sampling_strategy import SamplingStrategy

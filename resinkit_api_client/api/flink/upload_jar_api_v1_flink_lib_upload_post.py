@@ -5,7 +5,9 @@ import httpx
 
 from ... import errors
 from ...client import AuthenticatedClient, Client
-from ...models.body_upload_jar_api_v1_flink_lib_upload_post import BodyUploadJarApiV1FlinkLibUploadPost
+from ...models.body_upload_jar_api_v1_flink_lib_upload_post import (
+    BodyUploadJarApiV1FlinkLibUploadPost,
+)
 from ...models.http_validation_error import HTTPValidationError
 from ...types import Response
 

@@ -7,7 +7,9 @@ from attrs import field as _attrs_field
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
-    from ..models.sql_source_update_extra_params_type_0 import SqlSourceUpdateExtraParamsType0
+    from ..models.sql_source_update_extra_params_type_0 import (
+        SqlSourceUpdateExtraParamsType0,
+    )
 
 
 T = TypeVar("T", bound="SqlSourceUpdate")
@@ -36,7 +38,9 @@ class SqlSourceUpdate:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.sql_source_update_extra_params_type_0 import SqlSourceUpdateExtraParamsType0
+        from ..models.sql_source_update_extra_params_type_0 import (
+            SqlSourceUpdateExtraParamsType0,
+        )
 
         host: Union[None, Unset, str]
         if isinstance(self.host, Unset):
@@ -104,7 +108,9 @@ class SqlSourceUpdate:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.sql_source_update_extra_params_type_0 import SqlSourceUpdateExtraParamsType0
+        from ..models.sql_source_update_extra_params_type_0 import (
+            SqlSourceUpdateExtraParamsType0,
+        )
 
         d = dict(src_dict)
 
@@ -162,7 +168,9 @@ class SqlSourceUpdate:
 
         query_timeout = _parse_query_timeout(d.pop("query_timeout", UNSET))
 
-        def _parse_extra_params(data: object) -> Union["SqlSourceUpdateExtraParamsType0", None, Unset]:
+        def _parse_extra_params(
+            data: object,
+        ) -> Union["SqlSourceUpdateExtraParamsType0", None, Unset]:
             if data is None:
                 return data
             if isinstance(data, Unset):

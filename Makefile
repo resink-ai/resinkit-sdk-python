@@ -1,4 +1,5 @@
 .PHONY: generate-api-client
+
 generate-api-client:
 	@if [ ! -f resinkit_api_client/py.typed ]; then \
 		echo "resinkit_api_client/ does not exist, are you in the correct folder?"; \

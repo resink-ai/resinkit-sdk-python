@@ -7,7 +7,9 @@ from attrs import field as _attrs_field
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
-    from ..models.kafka_inferred_schema_properties_type_0 import KafkaInferredSchemaPropertiesType0
+    from ..models.kafka_inferred_schema_properties_type_0 import (
+        KafkaInferredSchemaPropertiesType0,
+    )
 
 
 T = TypeVar("T", bound="KafkaInferredSchema")
@@ -29,7 +31,9 @@ class KafkaInferredSchema:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.kafka_inferred_schema_properties_type_0 import KafkaInferredSchemaPropertiesType0
+        from ..models.kafka_inferred_schema_properties_type_0 import (
+            KafkaInferredSchemaPropertiesType0,
+        )
 
         type_ = self.type_
 
@@ -66,12 +70,16 @@ class KafkaInferredSchema:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.kafka_inferred_schema_properties_type_0 import KafkaInferredSchemaPropertiesType0
+        from ..models.kafka_inferred_schema_properties_type_0 import (
+            KafkaInferredSchemaPropertiesType0,
+        )
 
         d = dict(src_dict)
         type_ = d.pop("type")
 
-        def _parse_properties(data: object) -> Union["KafkaInferredSchemaPropertiesType0", None, Unset]:
+        def _parse_properties(
+            data: object,
+        ) -> Union["KafkaInferredSchemaPropertiesType0", None, Unset]:
             if data is None:
                 return data
             if isinstance(data, Unset):

@@ -96,7 +96,9 @@ class DSDSConfig:
         if isinstance(_attribute_detection, Unset):
             attribute_detection = UNSET
         else:
-            attribute_detection = AttributeDetectionConfig.from_dict(_attribute_detection)
+            attribute_detection = AttributeDetectionConfig.from_dict(
+                _attribute_detection
+            )
 
         dsds_config = cls(
             generate=generate,

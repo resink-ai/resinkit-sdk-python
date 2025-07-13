@@ -85,7 +85,9 @@ class DbCrawlConfig:
         _tables = d.pop("tables")
         for tables_item_data in _tables:
 
-            def _parse_tables_item(data: object) -> Union["TableRegexSelection", "TableSelection"]:
+            def _parse_tables_item(
+                data: object,
+            ) -> Union["TableRegexSelection", "TableSelection"]:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()

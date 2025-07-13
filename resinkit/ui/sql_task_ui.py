@@ -4,8 +4,6 @@ import yaml
 
 from resinkit.core.resinkit_api_client import ResinkitAPIClient
 
-pn.extension("codeeditor")
-
 
 class SQLTaskUI(param.Parameterized):
     """Panel UI for submitting Flink SQL tasks."""

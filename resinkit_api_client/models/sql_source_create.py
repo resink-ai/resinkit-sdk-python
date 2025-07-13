@@ -8,7 +8,9 @@ from ..models.database_kind import DatabaseKind
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
-    from ..models.sql_source_create_extra_params_type_0 import SqlSourceCreateExtraParamsType0
+    from ..models.sql_source_create_extra_params_type_0 import (
+        SqlSourceCreateExtraParamsType0,
+    )
 
 
 T = TypeVar("T", bound="SqlSourceCreate")
@@ -41,7 +43,9 @@ class SqlSourceCreate:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.sql_source_create_extra_params_type_0 import SqlSourceCreateExtraParamsType0
+        from ..models.sql_source_create_extra_params_type_0 import (
+            SqlSourceCreateExtraParamsType0,
+        )
 
         name = self.name
 
@@ -93,7 +97,9 @@ class SqlSourceCreate:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.sql_source_create_extra_params_type_0 import SqlSourceCreateExtraParamsType0
+        from ..models.sql_source_create_extra_params_type_0 import (
+            SqlSourceCreateExtraParamsType0,
+        )
 
         d = dict(src_dict)
         name = d.pop("name")
@@ -119,7 +125,9 @@ class SqlSourceCreate:
 
         query_timeout = _parse_query_timeout(d.pop("query_timeout", UNSET))
 
-        def _parse_extra_params(data: object) -> Union["SqlSourceCreateExtraParamsType0", None, Unset]:
+        def _parse_extra_params(
+            data: object,
+        ) -> Union["SqlSourceCreateExtraParamsType0", None, Unset]:
             if data is None:
                 return data
             if isinstance(data, Unset):

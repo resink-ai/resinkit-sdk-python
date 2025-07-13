@@ -8,7 +8,9 @@ from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
     from ..models.table_crawl_result_dsds_type_0 import TableCrawlResultDsdsType0
-    from ..models.table_crawl_result_sample_data_item import TableCrawlResultSampleDataItem
+    from ..models.table_crawl_result_sample_data_item import (
+        TableCrawlResultSampleDataItem,
+    )
 
 
 T = TypeVar("T", bound="TableCrawlResult")
@@ -73,7 +75,9 @@ class TableCrawlResult:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.table_crawl_result_dsds_type_0 import TableCrawlResultDsdsType0
-        from ..models.table_crawl_result_sample_data_item import TableCrawlResultSampleDataItem
+        from ..models.table_crawl_result_sample_data_item import (
+            TableCrawlResultSampleDataItem,
+        )
 
         d = dict(src_dict)
         table_name = d.pop("table_name")
@@ -85,11 +89,15 @@ class TableCrawlResult:
         sample_data = []
         _sample_data = d.pop("sample_data")
         for sample_data_item_data in _sample_data:
-            sample_data_item = TableCrawlResultSampleDataItem.from_dict(sample_data_item_data)
+            sample_data_item = TableCrawlResultSampleDataItem.from_dict(
+                sample_data_item_data
+            )
 
             sample_data.append(sample_data_item)
 
-        def _parse_dsds(data: object) -> Union["TableCrawlResultDsdsType0", None, Unset]:
+        def _parse_dsds(
+            data: object,
+        ) -> Union["TableCrawlResultDsdsType0", None, Unset]:
             if data is None:
                 return data
             if isinstance(data, Unset):

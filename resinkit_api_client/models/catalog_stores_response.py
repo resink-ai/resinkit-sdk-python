@@ -46,7 +46,9 @@ class CatalogStoresResponse:
         catalog_stores = []
         _catalog_stores = d.pop("catalogStores")
         for catalog_stores_item_data in _catalog_stores:
-            catalog_stores_item = CatalogStoreDefinition.from_dict(catalog_stores_item_data)
+            catalog_stores_item = CatalogStoreDefinition.from_dict(
+                catalog_stores_item_data
+            )
 
             catalog_stores.append(catalog_stores_item)
 

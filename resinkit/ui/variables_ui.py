@@ -23,8 +23,7 @@ class VariablesUI:
             base_url=base_url, api_key=personal_access_token, session_id=session_id
         )
 
-        # Initialize Panel components
-        pn.extension()
+        # Initialize Panel components (extensions handled by main Resinkit class)
 
         # Create main UI components
         self.variables_table = pn.widgets.Tabulator(

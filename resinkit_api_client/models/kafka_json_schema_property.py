@@ -7,8 +7,12 @@ from attrs import field as _attrs_field
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
-    from ..models.kafka_json_schema_property_items_type_0 import KafkaJsonSchemaPropertyItemsType0
-    from ..models.kafka_json_schema_property_properties_type_0 import KafkaJsonSchemaPropertyPropertiesType0
+    from ..models.kafka_json_schema_property_items_type_0 import (
+        KafkaJsonSchemaPropertyItemsType0,
+    )
+    from ..models.kafka_json_schema_property_properties_type_0 import (
+        KafkaJsonSchemaPropertyPropertiesType0,
+    )
 
 
 T = TypeVar("T", bound="KafkaJsonSchemaProperty")
@@ -34,8 +38,12 @@ class KafkaJsonSchemaProperty:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.kafka_json_schema_property_items_type_0 import KafkaJsonSchemaPropertyItemsType0
-        from ..models.kafka_json_schema_property_properties_type_0 import KafkaJsonSchemaPropertyPropertiesType0
+        from ..models.kafka_json_schema_property_items_type_0 import (
+            KafkaJsonSchemaPropertyItemsType0,
+        )
+        from ..models.kafka_json_schema_property_properties_type_0 import (
+            KafkaJsonSchemaPropertyPropertiesType0,
+        )
 
         type_ = self.type_
 
@@ -90,8 +98,12 @@ class KafkaJsonSchemaProperty:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.kafka_json_schema_property_items_type_0 import KafkaJsonSchemaPropertyItemsType0
-        from ..models.kafka_json_schema_property_properties_type_0 import KafkaJsonSchemaPropertyPropertiesType0
+        from ..models.kafka_json_schema_property_items_type_0 import (
+            KafkaJsonSchemaPropertyItemsType0,
+        )
+        from ..models.kafka_json_schema_property_properties_type_0 import (
+            KafkaJsonSchemaPropertyPropertiesType0,
+        )
 
         d = dict(src_dict)
         type_ = d.pop("type")
@@ -105,7 +117,9 @@ class KafkaJsonSchemaProperty:
 
         format_ = _parse_format_(d.pop("format", UNSET))
 
-        def _parse_items(data: object) -> Union["KafkaJsonSchemaPropertyItemsType0", None, Unset]:
+        def _parse_items(
+            data: object,
+        ) -> Union["KafkaJsonSchemaPropertyItemsType0", None, Unset]:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -122,7 +136,9 @@ class KafkaJsonSchemaProperty:
 
         items = _parse_items(d.pop("items", UNSET))
 
-        def _parse_properties(data: object) -> Union["KafkaJsonSchemaPropertyPropertiesType0", None, Unset]:
+        def _parse_properties(
+            data: object,
+        ) -> Union["KafkaJsonSchemaPropertyPropertiesType0", None, Unset]:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -130,12 +146,16 @@ class KafkaJsonSchemaProperty:
             try:
                 if not isinstance(data, dict):
                     raise TypeError()
-                properties_type_0 = KafkaJsonSchemaPropertyPropertiesType0.from_dict(data)
+                properties_type_0 = KafkaJsonSchemaPropertyPropertiesType0.from_dict(
+                    data
+                )
 
                 return properties_type_0
             except:  # noqa: E722
                 pass
-            return cast(Union["KafkaJsonSchemaPropertyPropertiesType0", None, Unset], data)
+            return cast(
+                Union["KafkaJsonSchemaPropertyPropertiesType0", None, Unset], data
+            )
 
         properties = _parse_properties(d.pop("properties", UNSET))
 
