@@ -1,4 +1,4 @@
-.PHONY: generate-api-client
+.PHONY: generate-api-client lab
 
 generate-api-client:
 	@if [ ! -f resinkit_api_client/py.typed ]; then \
@@ -7,3 +7,6 @@ generate-api-client:
 	fi
 	uvx openapi-python-client generate --url http://127.0.0.1:8603/openapi.json --overwrite --output-path /tmp/resinkit_api
 	cp -r /tmp/resinkit_api/resinkit_api_client .
+
+lab:
+	uv run jupyter lab --notebook-dir=sample_notebooks
