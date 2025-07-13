@@ -6,7 +6,9 @@ from typing import Any, Dict, List, Optional
 
 
 class ResinkitAPIClient:
-    """Client for interacting with the Resinkit API."""
+    """
+    This is deprecated, use resinkit_api_client module instead.
+    """
 
     def __init__(
         self,

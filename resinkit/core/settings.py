@@ -63,7 +63,7 @@ GOOGLE_LLM_CONFIG = LLMConfig(
 class ResinkitConfig(BaseModel):
     """Configuration for ResinKit API client and core functionality."""
 
-    base_url: str = "http://localhost:8080"
+    base_url: str = "http://localhost:8603"
     session_id: Optional[str] = None
     access_token: Optional[str] = None
     sql_gateway_url: Optional[str] = None

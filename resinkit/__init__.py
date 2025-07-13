@@ -172,6 +172,31 @@ class CallableModule(types.ModuleType):
     def __call__(self, query: str) -> Any:
         return __call__(query)
 
+    def __getattr__(self, name):
+        # Handle submodule access (e.g., resinkit.ai)
+        if name in ["ai", "core", "ui"]:
+            import importlib
+
+            full_module_name = f"{self.__name__}.{name}"
+            try:
+                submodule = importlib.import_module(full_module_name)
+                setattr(self, name, submodule)
+                return submodule
+            except ImportError:
+                pass
+
+        # Fall back to original module attributes
+        original_module = sys.modules.get(f"_original_{self.__name__}")
+        if original_module and hasattr(original_module, name):
+            attr = getattr(original_module, name)
+            setattr(self, name, attr)
+            return attr
+
+        raise AttributeError(f"module '{self.__name__}' has no attribute '{name}'")
+
+
+# Store original module for fallback access
+sys.modules[f"_original_{__name__}"] = current_module
 
 # Create new callable module instance
 new_module = CallableModule(__name__)
