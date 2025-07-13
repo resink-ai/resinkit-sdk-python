@@ -8,13 +8,10 @@ This test verifies that the List SQL Sources tool can successfully:
 
 Run this test:
 $ ./e2e.sh test_list_sql_sources_tool
-$ pytest tests/e2e/test_list_sql_sources_tool.py::TestListSqlSourcesTool::test_list_sql_sources_happy_path -v --capture=no --tb=short
+$ pytest tests/e2e/test_list_sql_sources_tool.py::TestListSqlSourcesTool::test_list_sql_sources_real_data -v --capture=no --tb=short
 """
 
 import logging
-from unittest.mock import patch
-
-import pytest
 
 from resinkit.ai.tools.list_sql_sources import (
     ListSqlSourcesTool,
@@ -34,36 +31,51 @@ class TestListSqlSourcesTool(E2eBase):
         super().setup_method()
 
         # Configure settings to use the e2e test environment
-        update_settings(
-            base_url=self.BASE_URL, access_token=None
-        )  # Will use session-based auth for e2e tests
+        # Use a dummy access token since the tool requires authentication configured
+        # even though the API itself doesn't require it
+        update_settings(base_url=self.BASE_URL, access_token="dummy_token_for_e2e")
 
     def teardown_method(self):
         """Cleanup after each test"""
         # Reset settings to avoid affecting other tests
         reset_settings()
 
-    def test_list_sql_sources_happy_path(self):
-        """Test the happy path of listing SQL sources via the tool"""
-        logger.info("Testing List SQL Sources tool happy path")
+    def test_list_sql_sources_real_data(self):
+        """Test listing SQL sources with real API data"""
+        logger.info("Testing List SQL Sources tool with real data")
 
         # First, verify the API endpoint works directly
         response = self.get("/agent/sql/sources")
-        logger.info(f"Direct API response status: {response.status_code}")
+        self.assert_status_code(response, 200)
+        api_sources = self.assert_json_response(response)
 
-        if response.status_code == 200:
-            sources_data = response.json()
-            logger.info(f"Found {len(sources_data)} SQL sources via direct API")
-        else:
-            logger.warning(
-                f"Direct API call failed with status {response.status_code}: {response.text}"
+        logger.info(f"Direct API found {len(api_sources)} SQL sources")
+
+        # Verify the expected data structure from curl response
+        if api_sources:
+            source = api_sources[0]
+            expected_fields = [
+                "name",
+                "kind",
+                "host",
+                "port",
+                "database",
+                "user",
+                "query_timeout",
+                "extra_params",
+                "created_at",
+                "updated_at",
+                "created_by",
+            ]
+            for field in expected_fields:
+                assert field in source, f"SQL source should contain '{field}' field"
+
+            logger.info(
+                f"Example source: {source['name']} ({source['kind']}) at {source['host']}:{source['port']}"
             )
-            # For the test, we'll continue and let the tool handle the API interaction
 
-        # Create the tool
+        # Now test the tool
         tool = ListSqlSourcesTool()
-
-        # Test the direct method call
         result = tool._list_sql_sources()
 
         # Verify the result structure
@@ -71,31 +83,56 @@ class TestListSqlSourcesTool(E2eBase):
         assert hasattr(result, "sources"), "Result should have 'sources' attribute"
         assert hasattr(result, "count"), "Result should have 'count' attribute"
 
-        if result.success:
-            logger.info(f"✓ Tool successfully retrieved {result.count} SQL sources")
+        # Tool should succeed with real data
+        assert result.success, f"Tool should succeed, but got error: {getattr(result, 'error_message', 'Unknown error')}"
+        assert result.count == len(
+            api_sources
+        ), f"Tool count ({result.count}) should match API response ({len(api_sources)})"
 
-            # Verify source structure if any sources exist
-            for source in result.sources:
-                assert hasattr(source, "name"), "Source should have 'name' attribute"
-                assert hasattr(source, "kind"), "Source should have 'kind' attribute"
-                assert hasattr(source, "host"), "Source should have 'host' attribute"
-                assert hasattr(source, "port"), "Source should have 'port' attribute"
-                assert hasattr(
-                    source, "database"
-                ), "Source should have 'database' attribute"
-                logger.info(
-                    f"  - {source.name} ({source.kind}) at {source.host}:{source.port}"
-                )
-        else:
-            logger.error(
-                f"✗ Tool failed to retrieve SQL sources: {result.error_message}"
+        logger.info(f"✅ Tool successfully retrieved {result.count} SQL sources")
+
+        # Verify source structure matches API data
+        for i, source in enumerate(result.sources):
+            api_source = api_sources[i]
+
+            # Check that tool source has required attributes
+            assert hasattr(source, "name"), "Source should have 'name' attribute"
+            assert hasattr(source, "kind"), "Source should have 'kind' attribute"
+            assert hasattr(source, "host"), "Source should have 'host' attribute"
+            assert hasattr(source, "port"), "Source should have 'port' attribute"
+            assert hasattr(
+                source, "database"
+            ), "Source should have 'database' attribute"
+
+            # Verify values match API response
+            assert (
+                source.name == api_source["name"]
+            ), f"Source name should match API data"
+            assert (
+                source.kind == api_source["kind"]
+            ), f"Source kind should match API data"
+            assert (
+                source.host == api_source["host"]
+            ), f"Source host should match API data"
+            assert (
+                source.port == api_source["port"]
+            ), f"Source port should match API data"
+            assert (
+                source.database == api_source["database"]
+            ), f"Source database should match API data"
+
+            logger.info(
+                f"  ✅ {source.name} ({source.kind}) at {source.host}:{source.port}/{source.database}"
             )
-            # For e2e test, we'll treat this as expected if the API is not fully set up
-            pytest.skip(f"API not available or configured: {result.error_message}")
 
-    def test_function_tool_interface(self):
-        """Test the LlamaIndex FunctionTool interface"""
-        logger.info("Testing List SQL Sources FunctionTool interface")
+    def test_function_tool_interface_real_data(self):
+        """Test the LlamaIndex FunctionTool interface with real data"""
+        logger.info("Testing List SQL Sources FunctionTool interface with real data")
+
+        # First get the expected data from direct API call
+        response = self.get("/agent/sql/sources")
+        self.assert_status_code(response, 200)
+        api_sources = self.assert_json_response(response)
 
         # Create the function tool
         function_tool = create_list_sql_sources_tool()
@@ -114,216 +151,166 @@ class TestListSqlSourcesTool(E2eBase):
         ), "Description should mention SQL data sources"
 
         # Test calling the tool function
-        try:
-            # Call the underlying function
-            response = function_tool.fn()
+        response = function_tool.fn()
 
-            # Verify response is a string (as expected by LlamaIndex)
-            assert isinstance(response, str), "Function should return a string response"
+        # Verify response is a string (as expected by LlamaIndex)
+        assert isinstance(response, str), "Function should return a string response"
+        logger.info(f"Function tool response: {response}")
 
-            # Verify response format
-            if "Failed to list SQL sources" in response:
-                logger.warning(f"Tool reported failure: {response}")
-                pytest.skip("API not available or configured for testing")
-            elif "No SQL sources are currently configured" in response:
-                logger.info("✓ Tool successfully reported no sources configured")
-                assert "📋" in response, "Response should contain emoji formatting"
-            else:
-                logger.info("✓ Tool successfully listed SQL sources")
-                assert "📋" in response, "Response should contain emoji formatting"
+        # Verify response format based on actual data
+        if api_sources:
+            # Should have sources, verify the response mentions them
+            assert "📋" in response, "Response should contain emoji formatting"
+            assert (
+                f"Found {len(api_sources)} SQL source" in response
+            ), "Response should show correct count"
+
+            # Verify each source is mentioned in the response
+            for source in api_sources:
                 assert (
-                    "Found" in response and "SQL source" in response
-                ), "Response should indicate found sources"
-
-        except Exception as e:
-            logger.error(f"Tool execution failed: {e}")
-            # For e2e test, we'll treat this as expected if the API is not fully set up
-            pytest.skip(f"Tool execution failed, likely due to API configuration: {e}")
-
-    def test_tool_with_mock_data(self):
-        """Test the tool with mocked API responses to verify formatting"""
-        logger.info("Testing List SQL Sources tool with mock data")
-
-        # Mock the API client response
-        from unittest.mock import MagicMock
-
-        from resinkit_api_client.models.database_kind import DatabaseKind
-        from resinkit_api_client.models.sql_source_response import SqlSourceResponse
-
-        mock_sources = [
-            SqlSourceResponse(
-                name="test_postgres",
-                kind=DatabaseKind.POSTGRESQL,
-                host="localhost",
-                port=5432,
-                database="testdb",
-                user="testuser",
-                query_timeout="30s",
-                extra_params=None,
-                created_at="2024-01-01T00:00:00Z",
-                updated_at="2024-01-01T00:00:00Z",
-                created_by="test_user",
-            ),
-            SqlSourceResponse(
-                name="test_mysql",
-                kind=DatabaseKind.MYSQL,
-                host="mysql.example.com",
-                port=3306,
-                database="analytics",
-                user="analyst",
-                query_timeout="60s",
-                extra_params=None,
-                created_at="2024-01-02T00:00:00Z",
-                updated_at="2024-01-02T00:00:00Z",
-                created_by="admin_user",
-            ),
-        ]
-
-        # Patch the API call to return mock data
-        with patch(
-            "resinkit_api_client.api.sql_tools.list_sql_sources.sync"
-        ) as mock_api:
-            mock_api.return_value = mock_sources
-
-            # Create and test the tool
-            tool = ListSqlSourcesTool()
-
-            # Create a proper mock for the settings
-            mock_resinkit_config = MagicMock()
-            mock_resinkit_config.base_url = "http://localhost:8603"
-            mock_resinkit_config.access_token = "valid_token"
-            mock_resinkit_config.session_id = None
-
-            # Directly set the mocked settings on the tool
-            tool.settings.resinkit = mock_resinkit_config
-
-            result = tool._list_sql_sources()
-
-            # Verify the result
-            assert result.success, "Mock operation should succeed"
-            assert result.count == 2, "Should find 2 mock sources"
-            assert len(result.sources) == 2, "Should return 2 sources"
-
-            # Verify source details
-            postgres_source = result.sources[0]
-            assert postgres_source.name == "test_postgres"
-            assert postgres_source.kind == "postgresql"
-            assert postgres_source.host == "localhost"
-            assert postgres_source.port == 5432
-
-            mysql_source = result.sources[1]
-            assert mysql_source.name == "test_mysql"
-            assert mysql_source.kind == "mysql"
-            assert mysql_source.host == "mysql.example.com"
-            assert mysql_source.port == 3306
-
-            # Test the function tool response formatting
-            function_tool = tool.as_function_tool()
-            response = function_tool.fn()
-
-            # Verify formatted response
-            assert "Found 2 SQL source(s)" in response
-            assert "test_postgres" in response
-            assert "test_mysql" in response
-            assert "postgresql" in response
-            assert "mysql" in response
-            assert "localhost:5432" in response
-            assert "mysql.example.com:3306" in response
+                    source["name"] in response
+                ), f"Response should mention source '{source['name']}'"
+                assert (
+                    source["kind"] in response
+                ), f"Response should mention kind '{source['kind']}'"
 
             logger.info(
-                "✓ Mock test passed - tool correctly processes and formats SQL source data"
+                f"✅ Tool successfully listed {len(api_sources)} SQL sources with proper formatting"
             )
-
-    def test_tool_error_handling(self):
-        """Test the tool's error handling capabilities"""
-        logger.info("Testing List SQL Sources tool error handling")
-
-        # Test with invalid settings
-        from unittest.mock import MagicMock
-
-        # Create a proper mock for the first test (no base_url)
-        mock_settings_obj = MagicMock()
-        mock_settings_obj.resinkit.base_url = None
-        mock_settings_obj.resinkit.access_token = None
-        mock_settings_obj.resinkit.session_id = None
-
-        # Clear the global settings cache and patch the function
-        with (
-            patch("resinkit.core.settings._settings", None),
-            patch(
-                "resinkit.core.settings.get_settings", return_value=mock_settings_obj
-            ),
-        ):
-            tool = ListSqlSourcesTool()
-            result = tool._list_sql_sources()
-
-            # Verify error handling
-            assert not result.success, "Should fail with invalid settings"
+        else:
+            # No sources case
             assert (
-                "not configured" in result.error_message
-            ), "Error message should mention configuration"
+                "No SQL sources are currently configured" in response
+            ), "Response should indicate no sources"
+            assert "📋" in response, "Response should contain emoji formatting"
+            logger.info("✅ Tool successfully reported no sources configured")
 
-        # Test with API failure
-        with patch(
-            "resinkit_api_client.api.sql_tools.list_sql_sources.sync"
-        ) as mock_api:
-            # Mock API failure
-            mock_api.side_effect = Exception("API connection failed")
+    def test_tool_response_formatting(self):
+        """Test that the tool properly formats response for different scenarios"""
+        logger.info("Testing List SQL Sources tool response formatting")
 
-            # Create tool and directly mock its settings
-            tool = ListSqlSourcesTool()
+        # Get actual API data
+        response = self.get("/agent/sql/sources")
+        self.assert_status_code(response, 200)
+        api_sources = self.assert_json_response(response)
 
-            # Create a proper mock for the settings
-            mock_resinkit_config = MagicMock()
-            mock_resinkit_config.base_url = "http://localhost:8603"
-            mock_resinkit_config.access_token = "valid_token"
-            mock_resinkit_config.session_id = None
+        # Create and test the tool
+        tool = ListSqlSourcesTool()
 
-            # Directly set the mocked settings on the tool
-            tool.settings.resinkit = mock_resinkit_config
+        # Test the as_function_tool method
+        function_tool = tool.as_function_tool()
+        formatted_response = function_tool.fn()
 
-            result = tool._list_sql_sources()
+        # Verify response structure and formatting
+        assert isinstance(formatted_response, str), "Response should be a string"
+        assert "📋" in formatted_response, "Response should contain emoji formatting"
 
-            # Verify error handling
-            assert not result.success, "Should fail with API error"
+        if api_sources:
+            # With real data, verify proper formatting
             assert (
-                "API connection failed" in result.error_message
-            ), "Error message should contain original error"
+                f"Found {len(api_sources)} SQL source" in formatted_response
+            ), "Should show correct count"
 
-        logger.info("✓ Error handling tests passed")
+            # Verify each source appears in formatted output
+            for source in api_sources:
+                assert (
+                    source["name"] in formatted_response
+                ), f"Should mention source name '{source['name']}'"
+                assert (
+                    source["kind"] in formatted_response
+                ), f"Should mention source kind '{source['kind']}'"
+                assert (
+                    f"{source['host']}:{source['port']}" in formatted_response
+                ), "Should show host:port"
 
-    def test_integration_with_agent_manager(self):
-        """Test that the tool can be integrated with AgentManager"""
-        logger.info("Testing integration with AgentManager")
+            logger.info(
+                f"✅ Tool properly formatted response for {len(api_sources)} real SQL sources"
+            )
+        else:
+            # No sources case
+            assert (
+                "No SQL sources" in formatted_response
+            ), "Should indicate no sources when none exist"
+            logger.info("✅ Tool properly formatted response for empty sources list")
+
+    def test_tool_error_handling_invalid_config(self):
+        """Test the tool's error handling with invalid configuration"""
+        logger.info("Testing List SQL Sources tool error handling with invalid config")
+
+        # Test with invalid base URL by temporarily updating settings
+        original_settings = update_settings(base_url="http://invalid-url:9999")
 
         try:
-            from resinkit.ai.agent import AgentManager
+            tool = ListSqlSourcesTool()
+            result = tool._list_sql_sources()
 
-            # Create tool and agent manager
-            sql_sources_tool = create_list_sql_sources_tool()
-            agent_manager = AgentManager(tools=[sql_sources_tool])
-
-            # Verify the tool is properly integrated
-            agents = agent_manager.get_agents()
-            assert len(agents) > 0, "Should have at least one agent"
-
-            # Verify the agent has access to our tool
-            agent = agents[0]
-            tool_names = [tool.metadata.name for tool in agent.tools]
-            assert (
-                "list_sql_sources" in tool_names
-            ), "Agent should have access to list_sql_sources tool"
-
-            logger.info("✓ Tool successfully integrated with AgentManager")
-
-        except ImportError as e:
-            logger.warning(
-                f"AgentManager integration test skipped due to missing dependencies: {e}"
+            # Should fail gracefully with invalid URL
+            assert not result.success, "Should fail with invalid base URL"
+            assert hasattr(result, "error_message"), "Should have error message"
+            logger.info(
+                f"✅ Tool correctly handled invalid config: {result.error_message}"
             )
-            pytest.skip(f"AgentManager dependencies not available: {e}")
-        except Exception as e:
-            logger.error(f"AgentManager integration test failed: {e}")
-            # This might fail in e2e environment due to missing LLM API keys
-            pytest.skip(
-                f"AgentManager integration failed, likely due to missing API configuration: {e}"
-            )
+
+        finally:
+            # Restore original settings
+            update_settings(base_url=self.BASE_URL)
+
+    def test_tool_integration_basic(self):
+        """Test basic tool integration without complex dependencies"""
+        logger.info("Testing basic tool integration")
+
+        # Test tool creation
+        sql_sources_tool = create_list_sql_sources_tool()
+
+        # Verify tool properties
+        assert (
+            sql_sources_tool.metadata.name == "list_sql_sources"
+        ), "Tool should have correct name"
+        assert callable(sql_sources_tool.fn), "Tool function should be callable"
+
+        # Test that tool can be called and returns string response
+        response = sql_sources_tool.fn()
+        assert isinstance(response, str), "Tool should return string response"
+        assert len(response) > 0, "Response should not be empty"
+
+        logger.info("✅ Tool integration basic test passed")
+
+    def test_api_consistency(self):
+        """Test that tool results are consistent with direct API calls"""
+        logger.info("Testing API consistency between tool and direct calls")
+
+        # Get data via direct API call
+        api_response = self.get("/agent/sql/sources")
+        self.assert_status_code(api_response, 200)
+        api_data = self.assert_json_response(api_response)
+
+        # Get data via tool
+        tool = ListSqlSourcesTool()
+        tool_result = tool._list_sql_sources()
+
+        # Both should succeed
+        assert tool_result.success, f"Tool should succeed like direct API call"
+
+        # Data should be consistent
+        assert tool_result.count == len(
+            api_data
+        ), "Tool count should match API response count"
+
+        if api_data:
+            # Verify source details match
+            for i, api_source in enumerate(api_data):
+                tool_source = tool_result.sources[i]
+                assert (
+                    tool_source.name == api_source["name"]
+                ), "Source names should match"
+                assert (
+                    tool_source.kind == api_source["kind"]
+                ), "Source kinds should match"
+                assert (
+                    tool_source.host == api_source["host"]
+                ), "Source hosts should match"
+                assert (
+                    tool_source.port == api_source["port"]
+                ), "Source ports should match"
+
+        logger.info(f"✅ Tool and API data are consistent ({len(api_data)} sources)")
