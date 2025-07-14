@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 
 import pandas as pd
@@ -23,6 +24,47 @@ class TasksManagementUI(param.Parameterized):
 
         # Main layout that switches between views
         self.main = pn.Column(self._get_current_view)
+
+    def _run_async(self, coro):
+        """Helper to run async code properly whether in notebook or not."""
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_running_loop()
+            # If we're in a running loop, use nest_asyncio or create task
+            try:
+                import nest_asyncio
+
+                nest_asyncio.apply()
+                return asyncio.run(coro)
+            except ImportError:
+                # If nest_asyncio not available, use a thread
+                import concurrent.futures
+                import threading
+
+                result = [None]
+                exception = [None]
+
+                def run_in_thread():
+                    try:
+                        new_loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(new_loop)
+                        result[0] = new_loop.run_until_complete(coro)
+                        new_loop.close()
+                    except Exception as e:
+                        exception[0] = e
+                    finally:
+                        asyncio.set_event_loop(loop)
+
+                thread = threading.Thread(target=run_in_thread)
+                thread.start()
+                thread.join()
+
+                if exception[0]:
+                    raise exception[0]
+                return result[0]
+        except RuntimeError:
+            # No event loop running, use asyncio.run
+            return asyncio.run(coro)
 
     def _get_current_view(self):
         if self.current_view == "task_list":
@@ -116,13 +158,17 @@ class TasksManagementUI(param.Parameterized):
             selected_tasks = self.tasks_table.value.iloc[selected_indices]
             task_ids = selected_tasks["task_id"].tolist()
 
-            success_count = 0
-            for task_id in task_ids:
-                try:
-                    result = self.api_client.cancel_task(task_id, force=False)
-                    success_count += 1
-                except Exception as e:
-                    self._show_error(f"Error cancelling task {task_id}: {str(e)}")
+            async def cancel_tasks():
+                success_count = 0
+                for task_id in task_ids:
+                    try:
+                        result = await self.api_client.cancel_task(task_id, force=False)
+                        success_count += 1
+                    except Exception as e:
+                        self._show_error(f"Error cancelling task {task_id}: {str(e)}")
+                return success_count
+
+            success_count = self._run_async(cancel_tasks())
 
             self._show_info(
                 f"Successfully initiated cancellation for {success_count} out of {len(task_ids)} tasks."
@@ -142,13 +188,17 @@ class TasksManagementUI(param.Parameterized):
             selected_tasks = self.tasks_table.value.iloc[selected_indices]
             task_ids = selected_tasks["task_id"].tolist()
 
-            success_count = 0
-            for task_id in task_ids:
-                try:
-                    result = self.api_client.permanently_delete_task(task_id)
-                    success_count += 1
-                except Exception as e:
-                    self._show_error(f"Error deleting task {task_id}: {str(e)}")
+            async def delete_tasks():
+                success_count = 0
+                for task_id in task_ids:
+                    try:
+                        result = await self.api_client.permanently_delete_task(task_id)
+                        success_count += 1
+                    except Exception as e:
+                        self._show_error(f"Error deleting task {task_id}: {str(e)}")
+                return success_count
+
+            success_count = self._run_async(delete_tasks())
 
             self._show_info(
                 f"Successfully deleted {success_count} out of {len(task_ids)} tasks."
@@ -160,7 +210,11 @@ class TasksManagementUI(param.Parameterized):
     def _refresh_tasks(self, event):
         """Fetch the latest tasks and update the table."""
         try:
-            tasks = self.api_client.list_tasks()
+
+            async def fetch_tasks():
+                return await self.api_client.list_tasks()
+
+            tasks = self._run_async(fetch_tasks())
             processed_tasks = []
             for task in tasks.get("tasks", []):
                 # Convert timestamps
@@ -281,7 +335,10 @@ job:
             yaml.safe_load(yaml_config)  # Just to validate
 
             # Submit the task
-            result = self.api_client.submit_yaml_task(yaml_config)
+            async def submit_task():
+                return await self.api_client.submit_yaml_task(yaml_config)
+
+            result = self._run_async(submit_task())
 
             # Show success and go back to task list
             self._show_info(
@@ -354,7 +411,10 @@ job:
 
         try:
             # Get task details
-            task = self.api_client.get_task_details(self.selected_task_id)
+            async def get_task():
+                return await self.api_client.get_task_details(self.selected_task_id)
+
+            task = self._run_async(get_task())
 
             # Format the task info as markdown
             task_info = f"""
@@ -396,7 +456,11 @@ job:
 
             # Get logs
             try:
-                logs = self.api_client.get_task_logs(self.selected_task_id)
+
+                async def get_logs():
+                    return await self.api_client.get_task_logs(self.selected_task_id)
+
+                logs = self._run_async(get_logs())
                 # Handle both dict and list responses
                 if isinstance(logs, dict):
                     log_entries = logs.get("log_entries", [])
@@ -416,7 +480,11 @@ job:
 
             # Get results if task is completed
             try:
-                results = self.api_client.get_task_results(self.selected_task_id)
+
+                async def get_results():
+                    return await self.api_client.get_task_results(self.selected_task_id)
+
+                results = self._run_async(get_results())
                 self.task_results.object = results
             except Exception as e:
                 self.task_results.object = {"error": f"Error loading results: {str(e)}"}

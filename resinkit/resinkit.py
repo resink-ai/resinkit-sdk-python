@@ -2,6 +2,7 @@ from typing import Optional
 
 from resinkit.core.settings import get_settings
 from resinkit.core.task import Task
+from resinkit.ui.sources_ui import SourcesUI
 from resinkit.ui.sql_task_ui import SQLTaskUI
 from resinkit.ui.tasks_management_ui import ResinkitAPIClient, TasksManagementUI
 from resinkit.ui.variables_ui import VariablesUI
@@ -27,7 +28,8 @@ class Resinkit:
 
         self.api_client = ResinkitAPIClient(
             base_url=self._base_url,
-            api_key=self._personal_access_token,
+            access_token=self._personal_access_token,
+            session_id=self._resinkit_session_id,
         )
         self._ui_setup_done = False
 
@@ -92,4 +94,19 @@ class Resinkit:
         """
         self.ui_setup()
         ui = SQLTaskUI(api_client=self.api_client)
+        return ui.show()
+
+    def show_sources_ui(self) -> None:
+        """
+        Display a UI for managing SQL sources.
+
+        Returns:
+            A Panel UI component that can be displayed in a notebook.
+        """
+        self.ui_setup()
+        ui = SourcesUI(
+            base_url=self._base_url,
+            session_id=self._resinkit_session_id,
+            access_token=self._personal_access_token,
+        )
         return ui.show()

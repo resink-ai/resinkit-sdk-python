@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -20,7 +21,7 @@ class VariablesUI:
 
         # Initialize API client
         self.api_client = ResinkitAPIClient(
-            base_url=base_url, api_key=personal_access_token, session_id=session_id
+            base_url=base_url, access_token=personal_access_token, session_id=session_id
         )
 
         # Initialize Panel components (extensions handled by main Resinkit class)
@@ -108,10 +109,55 @@ class VariablesUI:
 
         self.main = pn.Column(self.table_view)
 
+    def _run_async(self, coro):
+        """Helper to run async code properly whether in notebook or not."""
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_running_loop()
+            # If we're in a running loop, use nest_asyncio or create task
+            try:
+                import nest_asyncio
+
+                nest_asyncio.apply()
+                return asyncio.run(coro)
+            except ImportError:
+                # If nest_asyncio not available, use a thread
+                import concurrent.futures
+                import threading
+
+                result = [None]
+                exception = [None]
+
+                def run_in_thread():
+                    try:
+                        new_loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(new_loop)
+                        result[0] = new_loop.run_until_complete(coro)
+                        new_loop.close()
+                    except Exception as e:
+                        exception[0] = e
+                    finally:
+                        asyncio.set_event_loop(loop)
+
+                thread = threading.Thread(target=run_in_thread)
+                thread.start()
+                thread.join()
+
+                if exception[0]:
+                    raise exception[0]
+                return result[0]
+        except RuntimeError:
+            # No event loop running, use asyncio.run
+            return asyncio.run(coro)
+
     def _load_variables(self) -> List[Dict[str, Any]]:
         """Fetch variables from API"""
         try:
-            variables = self.api_client.list_variables()
+
+            async def fetch_variables():
+                return await self.api_client.list_variables()
+
+            variables = self._run_async(fetch_variables())
 
             # Add action buttons to each row
             for var in variables:
@@ -127,7 +173,11 @@ class VariablesUI:
     def _get_variable(self, name: str) -> Dict[str, Any]:
         """Get a specific variable including its value"""
         try:
-            return self.api_client.get_variable(name)
+
+            async def get_variable():
+                return await self.api_client.get_variable(name)
+
+            return self._run_async(get_variable())
         except Exception as e:
             self.notification.value = f"Error fetching variable {name}: {e}"
             return {}
@@ -182,7 +232,11 @@ class VariablesUI:
     def _delete_variable(self, name: str):
         """Delete a variable"""
         try:
-            self.api_client.delete_variable(name)
+
+            async def delete_variable():
+                return await self.api_client.delete_variable(name)
+
+            self._run_async(delete_variable())
             self.notification.value = f"Variable '{name}' deleted successfully"
             self._refresh_variables()
         except Exception as e:
@@ -215,7 +269,11 @@ class VariablesUI:
             return
 
         try:
-            self.api_client.create_variable(name, value, description)
+
+            async def create_variable():
+                return await self.api_client.create_variable(name, value, description)
+
+            self._run_async(create_variable())
 
             # Clear form and return to table view
             self.notification.value = f"Variable '{name}' created successfully"

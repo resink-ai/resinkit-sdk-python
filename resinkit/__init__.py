@@ -87,6 +87,11 @@ def show_sql_task_ui():
     return _get_default_instance().show_sql_task_ui()
 
 
+def show_sources_ui():
+    """Show the SQL sources management UI."""
+    return _get_default_instance().show_sources_ui()
+
+
 def get_task(task_id: str):
     """Get a Task instance for the given task_id."""
     return _get_default_instance().get_task(task_id)
@@ -220,6 +225,7 @@ __all__ = (
     "show_tasks_ui",
     "show_vars_ui",
     "show_sql_task_ui",
+    "show_sources_ui",
     "get_task",
     "configure",
     "config",

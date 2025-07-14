@@ -107,19 +107,19 @@ class TestListSqlSourcesTool(E2eBase):
             # Verify values match API response
             assert (
                 source.name == api_source["name"]
-            ), f"Source name should match API data"
+            ), "Source name should match API data"
             assert (
                 source.kind == api_source["kind"]
-            ), f"Source kind should match API data"
+            ), "Source kind should match API data"
             assert (
                 source.host == api_source["host"]
-            ), f"Source host should match API data"
+            ), "Source host should match API data"
             assert (
                 source.port == api_source["port"]
-            ), f"Source port should match API data"
+            ), "Source port should match API data"
             assert (
                 source.database == api_source["database"]
-            ), f"Source database should match API data"
+            ), "Source database should match API data"
 
             logger.info(
                 f"  ✅ {source.name} ({source.kind}) at {source.host}:{source.port}/{source.database}"

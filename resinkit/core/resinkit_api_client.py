@@ -6,6 +6,14 @@ import asyncio
 from typing import Any, Dict, List, Optional
 
 from resinkit_api_client import AuthenticatedClient, Client
+from resinkit_api_client.api.db_crawl import crawl_database_tables
+from resinkit_api_client.api.sql_tools import (
+    create_sql_source,
+    delete_sql_source,
+    get_sql_source,
+    list_sql_sources,
+    update_sql_source,
+)
 from resinkit_api_client.api.tasks import (
     cancel_resinkit_task,
     delete_resinkit_task_permanent,
@@ -21,6 +29,9 @@ from resinkit_api_client.api.variables import (
     get_variable,
     list_variables,
 )
+from resinkit_api_client.models.db_crawl_request import DbCrawlRequest
+from resinkit_api_client.models.sql_source_create import SqlSourceCreate
+from resinkit_api_client.models.sql_source_update import SqlSourceUpdate
 from resinkit_api_client.models.submit_resinkit_task_payload import (
     SubmitResinkitTaskPayload,
 )
@@ -160,6 +171,64 @@ class ResinkitAPIClient:
         """Delete a variable."""
         result = await delete_variable.asyncio(name=name, client=self._client)
         return result or {"message": f"Variable '{name}' deleted successfully."}
+
+    # SQL Sources methods
+    async def list_sql_sources(self) -> List[Dict[str, Any]]:
+        """List all SQL sources."""
+        result = await list_sql_sources.asyncio(client=self._client)
+        if result:
+            return [source.to_dict() for source in result]
+        return []
+
+    async def get_sql_source(self, source_name: str) -> Dict[str, Any]:
+        """Get a specific SQL source."""
+        result = await get_sql_source.asyncio(
+            source_name=source_name, client=self._client
+        )
+        if result:
+            return result.to_dict()
+        return {}
+
+    async def create_sql_source(self, source_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new SQL source."""
+        sql_source = SqlSourceCreate.from_dict(source_data)
+        result = await create_sql_source.asyncio(client=self._client, body=sql_source)
+        if result:
+            return result.to_dict()
+        return {}
+
+    async def update_sql_source(
+        self, source_name: str, source_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Update an existing SQL source."""
+        sql_source = SqlSourceUpdate.from_dict(source_data)
+        result = await update_sql_source.asyncio(
+            source_name=source_name, client=self._client, body=sql_source
+        )
+        if result:
+            return result.to_dict()
+        return {}
+
+    async def delete_sql_source(self, source_name: str) -> Dict[str, Any]:
+        """Delete a SQL source."""
+        result = await delete_sql_source.asyncio(
+            source_name=source_name, client=self._client
+        )
+        return result or {
+            "message": f"SQL source '{source_name}' deleted successfully."
+        }
+
+    async def crawl_database_tables(
+        self, crawl_request: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Crawl database tables for a SQL source."""
+        crawl_req = DbCrawlRequest.from_dict(crawl_request)
+        result = await crawl_database_tables.asyncio(
+            client=self._client, body=crawl_req
+        )
+        if result:
+            return result.to_dict()
+        return {}
 
     def __enter__(self):
         """Context manager entry."""
