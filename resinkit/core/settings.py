@@ -68,6 +68,14 @@ class ResinkitConfig(BaseModel):
     access_token: Optional[str] = None
     sql_gateway_url: Optional[str] = None
 
+    # Local storage configuration
+    local_storage_dir: str = ".rsk"
+
+    @property
+    def sources_dir(self) -> str:
+        """Directory for storing source data."""
+        return f"{self.local_storage_dir}/sources"
+
 
 class Settings(BaseSettings):
     # Pydantic's internal mechanisms specifically look for a class variable named `model_config`

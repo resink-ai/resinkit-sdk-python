@@ -10,6 +10,7 @@ import panel as pn
 from resinkit_api_client.models.database_kind import DatabaseKind
 
 from ..core.resinkit_api_client import ResinkitAPIClient
+from ..core.settings import get_settings
 
 
 class SourcesUI:
@@ -327,7 +328,8 @@ class SourcesUI:
 
             if crawl_result:
                 self._save_crawl_results(source_name, crawl_result)
-                self.notification.value = f"Successfully crawled '{source_name}' and saved results to .rsk/sources/"
+                settings = get_settings()
+                self.notification.value = f"Successfully crawled '{source_name}' and saved results to {settings.resinkit.sources_dir}/{source_name}/"
             else:
                 self.notification.value = f"Failed to crawl source '{source_name}'"
 
@@ -335,14 +337,15 @@ class SourcesUI:
             self.notification.value = f"Error crawling source {source_name}: {e}"
 
     def _save_crawl_results(self, source_name: str, crawl_result: Dict[str, Any]):
-        """Save crawl results to .rsk/sources/ directory"""
+        """Save crawl results to configured sources directory"""
         try:
-            # Create .rsk/sources directory
-            rsk_dir = Path(".rsk/sources")
-            rsk_dir.mkdir(parents=True, exist_ok=True)
+            # Create sources/{source_name} directory
+            settings = get_settings()
+            source_dir = Path(settings.resinkit.sources_dir) / source_name
+            source_dir.mkdir(parents=True, exist_ok=True)
 
             # Save retrieval metadata
-            metadata_file = rsk_dir / ".retrieval_metadata.json"
+            metadata_file = source_dir / ".retrieval_metadata.json"
             with open(metadata_file, "w") as f:
                 json.dump(crawl_result.get("retrieval_metadata", {}), f, indent=2)
 
@@ -350,7 +353,7 @@ class SourcesUI:
             tables = crawl_result.get("tables", [])
             for table in tables:
                 table_name = table.get("table_name", "unknown")
-                table_dir = rsk_dir / table_name
+                table_dir = source_dir / table_name
                 table_dir.mkdir(exist_ok=True)
 
                 # Save DDL
