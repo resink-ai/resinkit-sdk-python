@@ -12,6 +12,7 @@ from resinkit_api_client.api.sql_tools import (
     delete_sql_source,
     get_sql_source,
     list_sql_sources,
+    test_sql_connection,
     update_sql_source,
 )
 from resinkit_api_client.api.tasks import (
@@ -226,6 +227,14 @@ class ResinkitAPIClient:
         result = await crawl_database_tables.asyncio(
             client=self._client, body=crawl_req
         )
+        if result:
+            return result.to_dict()
+        return {}
+
+    async def test_sql_connection(self, source_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Test SQL database connection without persisting credentials."""
+        sql_source = SqlSourceCreate.from_dict(source_data)
+        result = await test_sql_connection.asyncio(client=self._client, body=sql_source)
         if result:
             return result.to_dict()
         return {}

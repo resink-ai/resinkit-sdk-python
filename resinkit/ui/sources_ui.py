@@ -1,7 +1,6 @@
 import asyncio
 import csv
 import json
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -144,10 +143,9 @@ class SourcesUI:
         # Form buttons
         self.submit_button = pn.widgets.Button(name="Submit", button_type="primary")
         self.cancel_button = pn.widgets.Button(name="Cancel", button_type="default")
-
-        # Update form fields for editing
-        self.is_editing = False
-        self.editing_source_name = None
+        self.test_connection_button = pn.widgets.Button(
+            name="🔗 Test Connection", button_type="default", width=150
+        )
 
     def _create_views(self):
         """Create different views"""
@@ -188,7 +186,12 @@ class SourcesUI:
                 ),
             ),
             self.notification,
-            pn.Row(self.submit_button, self.cancel_button),
+            pn.Row(
+                self.cancel_button,
+                self.test_connection_button,
+                self.submit_button,
+                align="end",
+            ),
         )
 
         self.main = pn.Column(self.table_view)
@@ -200,6 +203,7 @@ class SourcesUI:
         self.delete_selected_button.on_click(self._delete_selected_sources)
         self.submit_button.on_click(self._submit_source)
         self.cancel_button.on_click(self._show_sources_table)
+        self.test_connection_button.on_click(self._test_connection)
         self.kind_select.param.watch(self._update_default_port, "value")
 
     def _update_default_port(self, event):
@@ -228,7 +232,6 @@ class SourcesUI:
             for source in sources:
                 source["actions"] = (
                     f'<button class="btn btn-primary btn-sm crawl-btn" data-source-name="{source["name"]}">🔍 Crawl</button> '
-                    f'<button class="btn btn-warning btn-sm edit-btn" data-source-name="{source["name"]}">✏️ Edit</button> '
                     f'<button class="btn btn-danger btn-sm delete-btn" data-source-name="{source["name"]}">🗑️ Delete</button>'
                 )
 
@@ -294,8 +297,6 @@ class SourcesUI:
 
                     if "crawl-btn" in event.value:
                         self._crawl_source(source_name)
-                    elif "edit-btn" in event.value:
-                        self._edit_source(source_name)
                     elif "delete-btn" in event.value:
                         self._delete_source(source_name)
                 except (IndexError, Exception) as e:
@@ -306,10 +307,16 @@ class SourcesUI:
         try:
 
             async def do_crawl():
-                # Create crawl request
+                # Create crawl request with correct structure
                 crawl_request = {
-                    "sql_source_name": source_name,
-                    "table_selection": {"select_all": True},
+                    "config": {
+                        "source": source_name,
+                        "tables": [
+                            {
+                                "name_regex": ".*"  # Select all tables using regex
+                            }
+                        ],
+                    }
                 }
 
                 # Execute crawl
@@ -343,7 +350,7 @@ class SourcesUI:
             tables = crawl_result.get("tables", [])
             for table in tables:
                 table_name = table.get("table_name", "unknown")
-                table_dir = rsk_dir / f".{table_name}"
+                table_dir = rsk_dir / table_name
                 table_dir.mkdir(exist_ok=True)
 
                 # Save DDL
@@ -371,43 +378,6 @@ class SourcesUI:
 
         except Exception as e:
             raise Exception(f"Failed to save crawl results: {e}")
-
-    def _edit_source(self, source_name: str):
-        """Edit an existing source"""
-        try:
-
-            async def get_source():
-                return await self.api_client.get_sql_source(source_name)
-
-            source_dict = self._run_async(get_source())
-
-            if source_dict:
-                # Populate form with existing values
-                self.name_input.value = source_dict["name"]
-                self.kind_select.value = source_dict["kind"]
-                self.host_input.value = source_dict["host"]
-                self.port_input.value = source_dict["port"]
-                self.database_input.value = source_dict["database"]
-                self.user_input.value = source_dict["user"]
-                self.password_input.value = ""  # Don't show existing password
-                self.query_timeout_input.value = source_dict.get("query_timeout", "30s")
-
-                # Set editing mode
-                self.is_editing = True
-                self.editing_source_name = source_name
-                self.name_input.disabled = True  # Can't change name when editing
-
-                # Update form title
-                self.form_view[0] = pn.pane.Markdown(
-                    f"# Edit SQL Source: {source_name}"
-                )
-
-                self._show_edit_form()
-            else:
-                self.notification.value = f"Could not find source '{source_name}'"
-
-        except Exception as e:
-            self.notification.value = f"Error editing source {source_name}: {e}"
 
     def _delete_source(self, source_name: str):
         """Delete a single source"""
@@ -462,16 +432,8 @@ class SourcesUI:
         """Show the add source form"""
         self.notification.value = ""
         self._clear_form()
-        self.is_editing = False
-        self.editing_source_name = None
         self.name_input.disabled = False
         self.form_view[0] = pn.pane.Markdown("# Add SQL Source")
-        self.main.clear()
-        self.main.append(self.form_view)
-
-    def _show_edit_form(self):
-        """Show the edit source form"""
-        self.notification.value = ""
         self.main.clear()
         self.main.append(self.form_view)
 
@@ -511,59 +473,85 @@ class SourcesUI:
             )
             return
 
-        if not self.is_editing and not password:
-            self.notification.value = "Password is required for new sources"
+        if not password:
+            self.notification.value = "Password is required"
             return
 
         try:
-            if self.is_editing:
-                # Update existing source
-                async def update_source():
-                    update_data = {
-                        "kind": kind,
-                        "host": host,
-                        "port": port,
-                        "database": database,
-                        "user": user,
-                        "query_timeout": query_timeout,
-                    }
+            # Create new source
+            async def create_source():
+                source_data = {
+                    "name": name,
+                    "kind": kind,
+                    "host": host,
+                    "port": port,
+                    "database": database,
+                    "user": user,
+                    "password": password,
+                    "query_timeout": query_timeout,
+                }
 
-                    # Only include password if provided
-                    if password:
-                        update_data["password"] = password
+                return await self.api_client.create_sql_source(source_data)
 
-                    return await self.api_client.update_sql_source(
-                        self.editing_source_name, update_data
-                    )
-
-                self._run_async(update_source())
-                self.notification.value = (
-                    f"Source '{self.editing_source_name}' updated successfully"
-                )
-            else:
-                # Create new source
-                async def create_source():
-                    source_data = {
-                        "name": name,
-                        "kind": kind,
-                        "host": host,
-                        "port": port,
-                        "database": database,
-                        "user": user,
-                        "password": password,
-                        "query_timeout": query_timeout,
-                    }
-
-                    return await self.api_client.create_sql_source(source_data)
-
-                self._run_async(create_source())
-                self.notification.value = f"Source '{name}' created successfully"
+            self._run_async(create_source())
+            self.notification.value = f"Source '{name}' created successfully"
 
             # Return to table view
             self._show_sources_table()
 
         except Exception as e:
             self.notification.value = f"Error saving source: {e}"
+
+    def _test_connection(self, event=None):
+        """Test the database connection with current form values"""
+        name = self.name_input.value
+        kind = self.kind_select.value
+        host = self.host_input.value
+        port = self.port_input.value
+        database = self.database_input.value
+        user = self.user_input.value
+        password = self.password_input.value
+        query_timeout = self.query_timeout_input.value
+
+        # Validation - require all fields except name for connection test
+        if not all([kind, host, database, user, password]):
+            self.notification.value = "Kind, host, database, user, and password are required for connection test"
+            return
+
+        # Disable button during test
+        self.test_connection_button.disabled = True
+        self.test_connection_button.name = "Testing..."
+        self.notification.value = "Testing connection..."
+
+        try:
+
+            async def test_connection():
+                connection_data = {
+                    "name": name or "test_connection",  # Use dummy name for test
+                    "kind": kind,
+                    "host": host,
+                    "port": port,
+                    "database": database,
+                    "user": user,
+                    "password": password,
+                    "query_timeout": query_timeout,
+                }
+                return await self.api_client.test_sql_connection(connection_data)
+
+            result = self._run_async(test_connection())
+
+            if result.get("success", False):
+                self.notification.value = "✅ Connection successful!"
+            else:
+                error_msg = result.get("error", "Unknown connection error")
+                self.notification.value = f"❌ Connection failed: {error_msg}"
+
+        except Exception as e:
+            self.notification.value = f"❌ Connection test failed: {str(e)}"
+        finally:
+            # Re-enable button
+            self.test_connection_button.disabled = False
+            self.test_connection_button.name = "🔗 Test Connection"
 
     def show(self):
         """Display the UI"""

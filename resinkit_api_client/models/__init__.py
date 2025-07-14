@@ -47,6 +47,7 @@ from .retrieval_metadata import RetrievalMetadata
 from .sampling_strategy import SamplingStrategy
 from .schema_inference_config import SchemaInferenceConfig
 from .schema_info import SchemaInfo
+from .sql_connection_test_result import SqlConnectionTestResult
 from .sql_query import SQLQuery
 from .sql_query_request import SqlQueryRequest
 from .sql_query_result import SqlQueryResult
@@ -116,6 +117,7 @@ __all__ = (
     "SamplingStrategy",
     "SchemaInferenceConfig",
     "SchemaInfo",
+    "SqlConnectionTestResult",
     "SQLQuery",
     "SqlQueryRequest",
     "SqlQueryResult",

@@ -7,6 +7,7 @@ generate-api-client:
 	fi
 	uvx openapi-python-client generate --url http://127.0.0.1:8603/openapi.json --overwrite --output-path /tmp/resinkit_api
 	cp -r /tmp/resinkit_api/resinkit_api_client .
+	uv run ruff check --select I --fix . && uv run ruff format .
 
 lab:
 	uv run jupyter lab --notebook-dir=sample_notebooks
