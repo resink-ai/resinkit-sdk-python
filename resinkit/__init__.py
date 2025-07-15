@@ -92,6 +92,13 @@ def show_sources_ui():
     return _get_default_instance().show_sources_ui()
 
 
+def show_ai_tools_ui():
+    """Show the AI tools testing UI."""
+    from .ui.ai_tools_ui import show_ai_tools_ui as _show_ai_tools_ui
+
+    return _show_ai_tools_ui()
+
+
 def get_task(task_id: str):
     """Get a Task instance for the given task_id."""
     return _get_default_instance().get_task(task_id)
@@ -226,6 +233,7 @@ __all__ = (
     "show_vars_ui",
     "show_sql_task_ui",
     "show_sources_ui",
+    "show_ai_tools_ui",
     "get_task",
     "configure",
     "config",

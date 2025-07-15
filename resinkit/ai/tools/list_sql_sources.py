@@ -5,15 +5,14 @@ This tool is backed by the ResinKit API and allows agents to discover
 available SQL data sources that have been configured in the system.
 """
 
+import asyncio
 from typing import List, Optional
 
 from llama_index.core.tools import FunctionTool
 from pydantic import BaseModel, Field
 
+from resinkit.core.resinkit_api_client import ResinkitAPIClient
 from resinkit.core.settings import get_settings
-from resinkit_api_client.api.sql_tools import list_sql_sources
-from resinkit_api_client.client import AuthenticatedClient
-from resinkit_api_client.models.sql_source_response import SqlSourceResponse
 
 
 class ListSqlSourcesParams(BaseModel):
@@ -55,34 +54,13 @@ class ListSqlSourcesTool:
     def __init__(self):
         """Initialize the List SQL Sources tool."""
         self.settings = get_settings()
+        self.api_client = ResinkitAPIClient(
+            base_url=self.settings.resinkit.base_url,
+            access_token=self.settings.resinkit.access_token,
+            session_id=self.settings.resinkit.session_id,
+        )
 
-    def _get_client(self) -> AuthenticatedClient:
-        """Get authenticated client for ResinKit API."""
-        base_url = self.settings.resinkit.base_url
-        if not base_url:
-            raise ValueError("ResinKit base_url not configured in settings")
-
-        # Check if we have proper authentication configured
-        access_token = self.settings.resinkit.access_token
-        session_id = self.settings.resinkit.session_id
-
-        if not access_token and not session_id:
-            raise ValueError(
-                "ResinKit authentication not configured - need either access_token or session_id"
-            )
-
-        # Use access token if available, otherwise fall back to session-based auth
-        if access_token:
-            # For token-based auth, we need to set the Authorization header
-            client = AuthenticatedClient(base_url=base_url, token=access_token)
-        else:
-            # For session-based auth, we'll create a basic client without token
-            # Note: The generated client may need manual cookie handling for session auth
-            client = AuthenticatedClient(base_url=base_url, token=None)
-
-        return client
-
-    def _list_sql_sources(self) -> ListSqlSourcesResult:
+    async def _list_sql_sources(self) -> ListSqlSourcesResult:
         """
         List all available SQL data sources.
 
@@ -90,12 +68,10 @@ class ListSqlSourcesTool:
             ListSqlSourcesResult with information about available SQL sources
         """
         try:
-            client = self._get_client()
+            # Call the wrapper API client method
+            response = await self.api_client.list_sql_sources()
 
-            # Call the generated API client method
-            response = list_sql_sources.sync(client=client)
-
-            if response is None:
+            if not response:
                 return ListSqlSourcesResult(
                     success=False,
                     error_message="Failed to retrieve SQL sources from API",
@@ -103,16 +79,16 @@ class ListSqlSourcesTool:
 
             # Convert API response to our structured format
             sources = []
-            for source in response:
+            for source_dict in response:
                 source_info = SqlSourceInfo(
-                    name=source.name,
-                    kind=source.kind.value,
-                    host=source.host,
-                    port=source.port,
-                    database=source.database,
-                    user=source.user,
-                    created_at=source.created_at,
-                    created_by=source.created_by,
+                    name=source_dict["name"],
+                    kind=source_dict["kind"],
+                    host=source_dict["host"],
+                    port=source_dict["port"],
+                    database=source_dict["database"],
+                    user=source_dict["user"],
+                    created_at=source_dict["created_at"],
+                    created_by=source_dict["created_by"],
                 )
                 sources.append(source_info)
 
@@ -124,6 +100,30 @@ class ListSqlSourcesTool:
             return ListSqlSourcesResult(
                 success=False, error_message=f"Error listing SQL sources: {str(e)}"
             )
+
+    def _run_async(self, coro):
+        """Helper to run async code."""
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        if loop.is_running():
+            # If we're in a Jupyter notebook or similar
+            try:
+                import nest_asyncio
+
+                nest_asyncio.apply()
+            except ImportError:
+                pass
+            return loop.run_until_complete(coro)
+        else:
+            return loop.run_until_complete(coro)
+
+    def list_sql_sources_sync(self) -> ListSqlSourcesResult:
+        """Synchronous wrapper for listing SQL sources."""
+        return self._run_async(self._list_sql_sources())
 
     def as_function_tool(self) -> FunctionTool:
         """
@@ -144,7 +144,7 @@ class ListSqlSourcesTool:
             Returns:
                 Formatted string with information about available SQL sources
             """
-            result = self._list_sql_sources()
+            result = self.list_sql_sources_sync()
 
             if not result.success:
                 return f"❌ Failed to list SQL sources: {result.error_message}"
@@ -186,7 +186,7 @@ class ListSqlSourcesTool:
         Returns:
             List of SqlSourceInfo objects
         """
-        result = self._list_sql_sources()
+        result = self.list_sql_sources_sync()
         return result.sources if result.success else []
 
 

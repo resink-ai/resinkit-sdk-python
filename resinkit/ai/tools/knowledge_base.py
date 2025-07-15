@@ -578,6 +578,38 @@ def get_knowledge_files_search_tool() -> FunctionTool:
     )
 
 
+_rsk_kb = None
+
+
+def get_rsk_kb() -> FileKnowledgeBase:
+    global _rsk_kb
+    if _rsk_kb is None:
+        _settings = get_settings()
+        persist_dir = Path(_settings.resinkit.local_storage_dir) / "chroma_db"
+        _rsk_kb = FileKnowledgeBase(persist_dir=str(persist_dir))
+        _rsk_kb.add_directory(_settings.resinkit.sources_dir)
+    return _rsk_kb
+
+
+def query_with_rsk_kb(query: str, top_k: int = 5, llm: Optional[LLM] = None) -> str:
+    kb = get_rsk_kb()
+    # Override the LLM if provided
+    if llm is not None:
+        kb.llm = llm
+    return kb.query_with_response(query=query, top_k=top_k)
+
+
+def get_rsk_kb_tool(llm: Optional[LLM] = None) -> FunctionTool:
+    def query_with_llm(query: str, top_k: int = 5) -> str:
+        return query_with_rsk_kb(query=query, top_k=top_k, llm=llm)
+
+    return FunctionTool.from_defaults(
+        query_with_llm,
+        name="rsk_kb",
+        description="A tool to search the ResinKit knowledge base.",
+    )
+
+
 # def main():
 #     kb = FileKnowledgeBase()
 #     kb.add_directory("/tmp/kb/knowledge/mysas")

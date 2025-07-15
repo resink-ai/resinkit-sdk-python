@@ -8,7 +8,9 @@ This test verifies that all UI components can be successfully initialized withou
 4. SQL sources management UI (show_sources_ui)
 
 Run this test:
-$ ./e2e.sh test_ui_initialization
+$ ./e2e.sh test_all_ui_components_initialize
+$ ./e2e.sh test_ui_components_with_custom_settings
+$ ./e2e.sh test_async_compatibility
 $ pytest tests/e2e/test_ui_initialization.py::TestUIInitialization::test_all_ui_components_initialize -v --capture=no --tb=short
 """
 
@@ -33,13 +35,9 @@ class TestUIInitialization(E2eBase):
 
         # Configure settings for testing
         update_settings(
-            {
-                "resinkit": {
-                    "base_url": self.BASE_URL,
-                    "access_token": "dummy_token_for_ui_test",  # UI tests don't need real auth
-                    "session_id": "test_session_id",
-                }
-            }
+            base_url=self.BASE_URL,
+            access_token="dummy_token_for_ui_test",  # UI tests don't need real auth
+            session_id="test_session_id",
         )
 
         logger.info(f"Testing UI initialization with base URL: {self.BASE_URL}")
@@ -86,6 +84,17 @@ class TestUIInitialization(E2eBase):
             logger.error(f"✗ Sources UI failed to initialize: {e}")
             raise AssertionError(f"Sources UI initialization failed: {e}")
 
+        # Test AI tools UI
+        try:
+            ai_tools_ui = rsk.show_ai_tools_ui()
+            logger.info("✓ AI Tools UI initialized successfully")
+            assert (
+                ai_tools_ui is not None
+            ), "AI Tools UI should return a Panel component"
+        except Exception as e:
+            logger.error(f"✗ AI Tools UI failed to initialize: {e}")
+            raise AssertionError(f"AI Tools UI initialization failed: {e}")
+
         logger.info("🎉 All UI components initialized successfully!")
 
     def test_ui_components_with_custom_settings(self):
@@ -131,6 +140,15 @@ class TestUIInitialization(E2eBase):
         except Exception as e:
             logger.error(f"✗ Custom Sources UI failed: {e}")
             raise AssertionError(f"Custom Sources UI initialization failed: {e}")
+
+        # Note: AI Tools UI is not instance-specific, so we test the global function
+        try:
+            ai_tools_ui = rsk.show_ai_tools_ui()
+            logger.info("✓ AI Tools UI initialized successfully")
+            assert ai_tools_ui is not None
+        except Exception as e:
+            logger.error(f"✗ AI Tools UI failed: {e}")
+            raise AssertionError(f"AI Tools UI initialization failed: {e}")
 
         logger.info("🎉 All custom UI components initialized successfully!")
 

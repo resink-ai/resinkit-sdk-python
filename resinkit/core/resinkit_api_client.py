@@ -31,12 +31,20 @@ from resinkit_api_client.api.variables import (
     list_variables,
 )
 from resinkit_api_client.models.db_crawl_request import DbCrawlRequest
+from resinkit_api_client.models.db_crawl_result import DbCrawlResult
+from resinkit_api_client.models.log_entry import LogEntry
+from resinkit_api_client.models.sql_connection_test_result import (
+    SqlConnectionTestResult,
+)
 from resinkit_api_client.models.sql_source_create import SqlSourceCreate
+from resinkit_api_client.models.sql_source_response import SqlSourceResponse
 from resinkit_api_client.models.sql_source_update import SqlSourceUpdate
 from resinkit_api_client.models.submit_resinkit_task_payload import (
     SubmitResinkitTaskPayload,
 )
+from resinkit_api_client.models.task_result import TaskResult
 from resinkit_api_client.models.variable_create import VariableCreate
+from resinkit_api_client.models.variable_response import VariableResponse
 
 from .settings import get_settings
 
@@ -123,19 +131,24 @@ class ResinkitAPIClient:
         )
         return result or {}
 
-    async def get_task_logs(self, task_id: str, **kwargs) -> Dict[str, Any]:
+    async def get_task_logs(self, task_id: str, **kwargs) -> List[LogEntry]:
         """Get logs for a specific task."""
         result = await get_resinkit_task_logs.asyncio(
             task_id=task_id, client=self._client, **kwargs
         )
-        return result or {}
+        if result and isinstance(result, list):
+            return [
+                LogEntry.from_dict(log) if isinstance(log, dict) else log
+                for log in result
+            ]
+        return []
 
-    async def get_task_results(self, task_id: str) -> Dict[str, Any]:
+    async def get_task_results(self, task_id: str) -> Optional[TaskResult]:
         """Get results of a completed task."""
         result = await get_resinkit_task_results.asyncio(
             task_id=task_id, client=self._client
         )
-        return result or {}
+        return result
 
     async def permanently_delete_task(self, task_id: str) -> Dict[str, Any]:
         """Permanently delete a task and its events if the task is in an end state."""
@@ -144,29 +157,23 @@ class ResinkitAPIClient:
         )
         return result or {"message": "Task deleted permanently."}
 
-    async def list_variables(self) -> List[Dict[str, Any]]:
+    async def list_variables(self) -> List[VariableResponse]:
         """List all variables."""
         result = await list_variables.asyncio(client=self._client)
-        if result:
-            return [var.to_dict() for var in result]
-        return []
+        return result or []
 
-    async def get_variable(self, name: str) -> Dict[str, Any]:
+    async def get_variable(self, name: str) -> Optional[VariableResponse]:
         """Get a specific variable including its value."""
         result = await get_variable.asyncio(name=name, client=self._client)
-        if result:
-            return result.to_dict()
-        return {}
+        return result
 
     async def create_variable(
         self, name: str, value: str, description: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> Optional[VariableResponse]:
         """Create a new variable."""
         variable_data = VariableCreate(name=name, value=value, description=description)
         result = await create_variable.asyncio(client=self._client, body=variable_data)
-        if result:
-            return result.to_dict()
-        return {}
+        return result
 
     async def delete_variable(self, name: str) -> Dict[str, Any]:
         """Delete a variable."""
@@ -174,41 +181,35 @@ class ResinkitAPIClient:
         return result or {"message": f"Variable '{name}' deleted successfully."}
 
     # SQL Sources methods
-    async def list_sql_sources(self) -> List[Dict[str, Any]]:
+    async def list_sql_sources(self) -> List[SqlSourceResponse]:
         """List all SQL sources."""
         result = await list_sql_sources.asyncio(client=self._client)
-        if result:
-            return [source.to_dict() for source in result]
-        return []
+        return result or []
 
-    async def get_sql_source(self, source_name: str) -> Dict[str, Any]:
+    async def get_sql_source(self, source_name: str) -> Optional[SqlSourceResponse]:
         """Get a specific SQL source."""
         result = await get_sql_source.asyncio(
             source_name=source_name, client=self._client
         )
-        if result:
-            return result.to_dict()
-        return {}
+        return result
 
-    async def create_sql_source(self, source_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_sql_source(
+        self, source_data: Dict[str, Any]
+    ) -> Optional[SqlSourceResponse]:
         """Create a new SQL source."""
         sql_source = SqlSourceCreate.from_dict(source_data)
         result = await create_sql_source.asyncio(client=self._client, body=sql_source)
-        if result:
-            return result.to_dict()
-        return {}
+        return result
 
     async def update_sql_source(
         self, source_name: str, source_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    ) -> Optional[SqlSourceResponse]:
         """Update an existing SQL source."""
         sql_source = SqlSourceUpdate.from_dict(source_data)
         result = await update_sql_source.asyncio(
             source_name=source_name, client=self._client, body=sql_source
         )
-        if result:
-            return result.to_dict()
-        return {}
+        return result
 
     async def delete_sql_source(self, source_name: str) -> Dict[str, Any]:
         """Delete a SQL source."""
@@ -221,23 +222,21 @@ class ResinkitAPIClient:
 
     async def crawl_database_tables(
         self, crawl_request: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    ) -> Optional[DbCrawlResult]:
         """Crawl database tables for a SQL source."""
         crawl_req = DbCrawlRequest.from_dict(crawl_request)
         result = await crawl_database_tables.asyncio(
             client=self._client, body=crawl_req
         )
-        if result:
-            return result.to_dict()
-        return {}
+        return result
 
-    async def test_sql_connection(self, source_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def test_sql_connection(
+        self, source_data: Dict[str, Any]
+    ) -> Optional[SqlConnectionTestResult]:
         """Test SQL database connection without persisting credentials."""
         sql_source = SqlSourceCreate.from_dict(source_data)
         result = await test_sql_connection.asyncio(client=self._client, body=sql_source)
-        if result:
-            return result.to_dict()
-        return {}
+        return result
 
     def __enter__(self):
         """Context manager entry."""
@@ -245,6 +244,7 @@ class ResinkitAPIClient:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
+        _ = exc_type, exc_val, exc_tb  # Unused parameters
         pass
 
     async def __aenter__(self):
