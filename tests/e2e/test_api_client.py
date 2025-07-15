@@ -105,26 +105,28 @@ class TestAPIClient(E2eBase):
                     "created_by",
                 ]
                 for field in expected_fields:
-                    assert field in variable, f"Variable should contain '{field}' field"
+                    assert hasattr(
+                        variable, field
+                    ), f"Variable should contain '{field}' attribute"
 
                 # Verify field types
                 assert isinstance(
-                    variable["name"], str
+                    variable.name, str
                 ), "Variable name should be a string"
                 assert isinstance(
-                    variable["created_at"], str
+                    variable.created_at, str
                 ), "Created_at should be a string"
                 assert isinstance(
-                    variable["updated_at"], str
+                    variable.updated_at, str
                 ), "Updated_at should be a string"
                 assert isinstance(
-                    variable["created_by"], str
+                    variable.created_by, str
                 ), "Created_by should be a string"
                 # description can be None, so we don't assert its type
 
             print(f"✅ Successfully retrieved {len(result)} variables")
             if result:
-                variable_names = [var["name"] for var in result]
+                variable_names = [var.name for var in result]
                 print(f"   Variables: {', '.join(variable_names)}")
 
             return result
@@ -138,8 +140,10 @@ class TestAPIClient(E2eBase):
         expected_data = self.assert_json_response(response)
 
         # Compare async client result with direct API response
+        # Convert structured models to dict for comparison
+        result_dicts = [var.to_dict() for var in result]
         assert (
-            result == expected_data
+            result_dicts == expected_data
         ), "Async client result should match direct API response"
 
     def test_list_tasks_with_filters(self):

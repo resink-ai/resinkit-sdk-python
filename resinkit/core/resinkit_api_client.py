@@ -10,6 +10,7 @@ from resinkit_api_client.api.db_crawl import crawl_database_tables
 from resinkit_api_client.api.sql_tools import (
     create_sql_source,
     delete_sql_source,
+    execute_sql_query,
     get_sql_source,
     list_sql_sources,
     test_sql_connection,
@@ -36,6 +37,8 @@ from resinkit_api_client.models.log_entry import LogEntry
 from resinkit_api_client.models.sql_connection_test_result import (
     SqlConnectionTestResult,
 )
+from resinkit_api_client.models.sql_query_request import SqlQueryRequest
+from resinkit_api_client.models.sql_query_result import SqlQueryResult
 from resinkit_api_client.models.sql_source_create import SqlSourceCreate
 from resinkit_api_client.models.sql_source_response import SqlSourceResponse
 from resinkit_api_client.models.sql_source_update import SqlSourceUpdate
@@ -236,6 +239,18 @@ class ResinkitAPIClient:
         """Test SQL database connection without persisting credentials."""
         sql_source = SqlSourceCreate.from_dict(source_data)
         result = await test_sql_connection.asyncio(client=self._client, body=sql_source)
+        return result
+
+    async def execute_sql_query(
+        self, query: str, source_name: str, limit: Optional[int] = 1000
+    ) -> Optional[SqlQueryResult]:
+        """Execute a SQL query against a data source."""
+        query_request = SqlQueryRequest(
+            query=query, source_name=source_name, limit=limit
+        )
+        result = await execute_sql_query.asyncio(
+            client=self._client, body=query_request
+        )
         return result
 
     def __enter__(self):

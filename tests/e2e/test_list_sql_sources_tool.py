@@ -76,7 +76,7 @@ class TestListSqlSourcesTool(E2eBase):
 
         # Now test the tool
         tool = ListSqlSourcesTool()
-        result = tool._list_sql_sources()
+        result = tool.list_sql_sources_sync()
 
         # Verify the result structure
         assert hasattr(result, "success"), "Result should have 'success' attribute"
@@ -242,7 +242,7 @@ class TestListSqlSourcesTool(E2eBase):
 
         try:
             tool = ListSqlSourcesTool()
-            result = tool._list_sql_sources()
+            result = tool.list_sql_sources_sync()
 
             # Should fail gracefully with invalid URL
             assert not result.success, "Should fail with invalid base URL"
@@ -286,7 +286,7 @@ class TestListSqlSourcesTool(E2eBase):
 
         # Get data via tool
         tool = ListSqlSourcesTool()
-        tool_result = tool._list_sql_sources()
+        tool_result = tool.list_sql_sources_sync()
 
         # Both should succeed
         assert tool_result.success, f"Tool should succeed like direct API call"

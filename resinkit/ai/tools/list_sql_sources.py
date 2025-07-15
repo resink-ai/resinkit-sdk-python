@@ -79,16 +79,16 @@ class ListSqlSourcesTool:
 
             # Convert API response to our structured format
             sources = []
-            for source_dict in response:
+            for source_response in response:
                 source_info = SqlSourceInfo(
-                    name=source_dict["name"],
-                    kind=source_dict["kind"],
-                    host=source_dict["host"],
-                    port=source_dict["port"],
-                    database=source_dict["database"],
-                    user=source_dict["user"],
-                    created_at=source_dict["created_at"],
-                    created_by=source_dict["created_by"],
+                    name=source_response.name,
+                    kind=source_response.kind,
+                    host=source_response.host,
+                    port=source_response.port,
+                    database=source_response.database,
+                    user=source_response.user,
+                    created_at=source_response.created_at,
+                    created_by=source_response.created_by,
                 )
                 sources.append(source_info)
 
@@ -104,22 +104,19 @@ class ListSqlSourcesTool:
     def _run_async(self, coro):
         """Helper to run async code."""
         try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        if loop.is_running():
+            loop = asyncio.get_running_loop()
             # If we're in a Jupyter notebook or similar
             try:
                 import nest_asyncio
 
                 nest_asyncio.apply()
+                return loop.run_until_complete(coro)
             except ImportError:
-                pass
-            return loop.run_until_complete(coro)
-        else:
-            return loop.run_until_complete(coro)
+                # If nest_asyncio is not available, use asyncio.run
+                return asyncio.run(coro)
+        except RuntimeError:
+            # No event loop running, use asyncio.run
+            return asyncio.run(coro)
 
     def list_sql_sources_sync(self) -> ListSqlSourcesResult:
         """Synchronous wrapper for listing SQL sources."""
