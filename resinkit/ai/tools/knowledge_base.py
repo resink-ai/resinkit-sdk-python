@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import chromadb
-from llama_index.core import Document, SimpleDirectoryReader, VectorStoreIndex
+from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.llms import LLM
 from llama_index.core.node_parser import SimpleNodeParser
@@ -569,7 +569,7 @@ def get_knowledge_files_search_tool() -> FunctionTool:
         knowledge_files_search,
         name="knowledge_files_search",
         description=(
-            "Find relevant knowledge files most relevant to the search query. "
+            "Find relevant knowl    edge files most relevant to the search query. "
             "This is a semantic search tool, so the query should ask for something semantically matching what is needed. "
             "If it makes sense to only search in particular directories, please specify them in the target_directories field. "
             "Unless there is a clear reason to use your own search query, please just reuse the user's exact query with their wording. "
