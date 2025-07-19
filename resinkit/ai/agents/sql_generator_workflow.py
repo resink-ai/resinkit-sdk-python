@@ -28,7 +28,7 @@ from llama_index.core.workflow import (
 from resinkit.ai.agent import AgentManager
 from resinkit.ai.tools.resinkit_api_tools import get_resinkit_api_tools
 
-from .mcp_integration import create_mcp_manager_with_defaults
+from .mcp_defaults import create_mcp_manager_with_defaults
 
 # Configure logging
 logger = logging.getLogger(__name__)
