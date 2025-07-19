@@ -10,17 +10,9 @@ import logging
 from typing import Any, Dict, List
 
 from llama_index.core.tools import FunctionTool
+from llama_index.tools.mcp import BasicMCPClient, MCPToolSpec
 
-from .http_mcp_client import HTTPMCPClient
-from .mcp_types import MCPServerConfig, MCPServerType
-
-try:
-    from llama_index.tools.mcp import MCPToolSpec
-
-    MCP_AVAILABLE = True
-except ImportError:
-    MCP_AVAILABLE = False
-    MCPToolSpec = None
+from resinkit.ai.agents.mcp_types import MCPServerConfig, MCPServerType
 
 logger = logging.getLogger(__name__)
 
@@ -44,11 +36,6 @@ class MCPManager:
         self.servers: Dict[str, MCPServerConfig] = {}
         self.connected_servers: Dict[str, Any] = {}
         self.loaded_tools: Dict[str, List[FunctionTool]] = {}
-
-        if not MCP_AVAILABLE:
-            logger.warning(
-                "MCP integration not available. Install 'llama-index-tools-mcp' package for MCP support."
-            )
 
     def add_server(self, config: MCPServerConfig) -> None:
         """
@@ -92,39 +79,44 @@ class MCPManager:
             return False
 
         try:
+            # Use BasicMCPClient for all server types
             if config.server_type == MCPServerType.STDIO:
-                # STDIO-based MCP server
-                if not MCP_AVAILABLE:
-                    logger.warning(
-                        "MCP not available, cannot connect to STDIO-based servers"
-                    )
+                # STDIO-based MCP server using BasicMCPClient
+                if not config.command or len(config.command) == 0:
+                    logger.error(f"Invalid command for STDIO server {server_name}")
                     return False
 
-                mcp_tool_spec = MCPToolSpec(
-                    command=config.command, env=config.env or None, raise_on_error=False
-                )
+                # Extract command and args
+                command = config.command[0]
+                args = config.command[1:] if len(config.command) > 1 else []
 
-                # Store the connected server
-                self.connected_servers[server_name] = mcp_tool_spec
+                # Create BasicMCPClient for STDIO
+                mcp_client = BasicMCPClient(command, args=args, env=config.env)
 
-            elif config.server_type in (MCPServerType.HTTP, MCPServerType.HTTP_SSE):
-                # HTTP-based MCP server
-                http_client = HTTPMCPClient(
-                    url=config.url, headers=config.headers, timeout=config.timeout
-                )
-
-                # Connect to the HTTP server
-                if await http_client.connect():
-                    self.connected_servers[server_name] = http_client
-                else:
-                    logger.error(f"Failed to connect to HTTP MCP server {server_name}")
+            elif config.server_type == MCPServerType.HTTP:
+                # HTTP-based MCP server using BasicMCPClient
+                if not config.url:
+                    logger.error(f"No URL provided for HTTP server {server_name}")
                     return False
+
+                mcp_client = BasicMCPClient(config.url)
+
+            elif config.server_type == MCPServerType.HTTP_SSE:
+                # Server-Sent Events MCP server using BasicMCPClient
+                if not config.url:
+                    logger.error(f"No URL provided for HTTP SSE server {server_name}")
+                    return False
+
+                mcp_client = BasicMCPClient(config.url)
 
             else:
                 logger.error(
                     f"Unsupported server type {config.server_type} for server {server_name}"
                 )
                 return False
+
+            # Store the connected server
+            self.connected_servers[server_name] = mcp_client
 
             if self.verbose:
                 logger.info(
@@ -144,9 +136,6 @@ class MCPManager:
         Returns:
             Dict mapping server names to connection success status
         """
-        if not MCP_AVAILABLE:
-            logger.warning("MCP not available, cannot connect to servers")
-            return {}
 
         results = {}
 
@@ -196,26 +185,40 @@ class MCPManager:
             server_client = self.connected_servers[server_name]
             config = self.servers[server_name]
 
-            if config.server_type == MCPServerType.STDIO:
-                # STDIO-based MCP server
-                if not MCP_AVAILABLE:
-                    logger.warning(
-                        "MCP not available, cannot load tools from STDIO-based servers"
+            # BasicMCPClient works the same for all transport types
+            # List available tools from the MCP server
+            tools_data = await server_client.list_tools()
+            tools = []
+
+            # Convert MCP tools to LlamaIndex FunctionTools
+            for tool_data in tools_data:
+                try:
+                    tool_name = tool_data.get("name", "unknown_tool")
+                    tool_description = tool_data.get(
+                        "description", f"Tool from MCP server: {tool_name}"
                     )
-                    return []
 
-                # Get tools from the MCP server
-                tools = server_client.to_tool_list()
+                    # Create async function that calls the MCP server
+                    def make_tool_function(name: str):
+                        async def tool_function(**kwargs):
+                            return await server_client.call_tool(name, kwargs)
 
-            elif config.server_type in (MCPServerType.HTTP, MCPServerType.HTTP_SSE):
-                # HTTP-based MCP server
-                tools = await server_client.load_tools()
+                        return tool_function
 
-            else:
-                logger.error(
-                    f"Unsupported server type {config.server_type} for server {server_name}"
-                )
-                return []
+                    # Create the FunctionTool
+                    function_tool = FunctionTool.from_defaults(
+                        fn=make_tool_function(tool_name),
+                        name=tool_name,
+                        description=tool_description,
+                        async_fn=True,
+                    )
+
+                    tools.append(function_tool)
+
+                except Exception as e:
+                    logger.error(
+                        f"Error creating FunctionTool from MCP tool {tool_data}: {e}"
+                    )
 
             # Store loaded tools
             self.loaded_tools[server_name] = tools
@@ -240,9 +243,6 @@ class MCPManager:
         Returns:
             Dict mapping server names to their tools
         """
-        if not MCP_AVAILABLE:
-            logger.warning("MCP not available, cannot load tools")
-            return {}
 
         # Load tools from all connected servers concurrently
         load_tasks = [
@@ -304,7 +304,7 @@ class MCPManager:
                 # Clean up the connection
                 server_client = self.connected_servers[server_name]
 
-                # Check if it's an HTTP client and close appropriately
+                # BasicMCPClient has a close method
                 if hasattr(server_client, "close"):
                     await server_client.close()
                 elif hasattr(server_client, "aclose"):

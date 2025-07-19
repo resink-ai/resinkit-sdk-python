@@ -2,13 +2,15 @@
 Example Usage of MCP Integration.
 
 This module provides examples and demo functions for using MCP integration
-with both STDIO (command-based) and HTTP MCP servers.
+with both STDIO (command-based) and HTTP MCP servers using BasicMCPClient.
 """
 
 import asyncio
 
-from .mcp_defaults import create_mcp_manager_with_defaults
-from .mcp_types import MCPServerType
+from llama_index.tools.mcp import BasicMCPClient
+
+from resinkit.ai.agents.mcp_defaults import create_mcp_manager_with_defaults
+from resinkit.ai.agents.mcp_types import MCPServerType
 
 
 async def example_mcp_usage():
@@ -102,5 +104,69 @@ async def example_mcp_usage():
         print("✓ All connections closed.")
 
 
+async def example_basic_mcp_client_usage():
+    """Example of using BasicMCPClient directly (from LlamaIndex documentation)."""
+
+    print("=== Direct BasicMCPClient Usage Examples ===\n")
+
+    # Example configurations that would work with actual MCP servers
+    examples = [
+        {
+            "name": "HTTP Streamable",
+            "client": lambda: BasicMCPClient("https://example.com/mcp"),
+            "description": "HTTP streamable MCP server",
+        },
+        {
+            "name": "Server-Sent Events",
+            "client": lambda: BasicMCPClient("https://example.com/sse"),
+            "description": "Server-Sent Events MCP server",
+        },
+        {
+            "name": "Local STDIO",
+            "client": lambda: BasicMCPClient("python", args=["server.py"]),
+            "description": "Local STDIO MCP server",
+        },
+    ]
+
+    for example in examples:
+        print(f"\n--- {example['name']} ---")
+        print(f"Description: {example['description']}")
+
+        try:
+            client = example["client"]()
+            print(f"✓ Created BasicMCPClient instance")
+
+            # These would work with actual MCP servers
+            print("Example operations (would require actual server):")
+            print("  - tools = await client.list_tools()")
+            print("  - result = await client.call_tool('calculate', {'x': 5, 'y': 10})")
+            print("  - resources = await client.list_resources()")
+            print("  - content, mime_type = await client.read_resource('config://app')")
+            print("  - prompts = await client.list_prompts()")
+            print(
+                "  - prompt_result = await client.get_prompt('greet', {'name': 'World'})"
+            )
+
+            # Clean up
+            if hasattr(client, "close"):
+                await client.close()
+
+        except Exception as e:
+            print(f"✗ Error creating client: {e}")
+
+    print("\n=== Integration with MCPManager ===")
+    print("The MCPManager class now uses BasicMCPClient internally for all transports.")
+    print(
+        "This provides a unified interface regardless of whether you use STDIO, HTTP, or SSE."
+    )
+
+
+async def run_all_examples():
+    """Run all MCP examples."""
+    await example_mcp_usage()
+    print("\n" + "=" * 80 + "\n")
+    await example_basic_mcp_client_usage()
+
+
 if __name__ == "__main__":
-    asyncio.run(example_mcp_usage())
+    asyncio.run(run_all_examples())

@@ -5,8 +5,6 @@ This module contains default configurations for common MCP servers
 including both STDIO (command-based) and HTTP-based servers.
 """
 
-from .mcp_manager import MCPManager
-
 # Default MCP server configurations
 DEFAULT_MCP_SERVERS = {
     # STDIO-based servers
@@ -53,7 +51,7 @@ DEFAULT_MCP_SERVERS = {
 }
 
 
-async def create_mcp_manager_with_defaults(verbose: bool = False) -> MCPManager:
+async def create_mcp_manager_with_defaults(verbose: bool = False):
     """
     Create an MCP manager with default server configurations.
 
@@ -63,6 +61,9 @@ async def create_mcp_manager_with_defaults(verbose: bool = False) -> MCPManager:
     Returns:
         Configured MCPManager instance
     """
+    # Import here to avoid circular imports
+    from resinkit.ai.agents.mcp_manager import MCPManager
+
     manager = MCPManager(verbose=verbose)
 
     # Add default servers

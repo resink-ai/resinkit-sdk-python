@@ -6,8 +6,10 @@ This example demonstrates how to connect to HTTP-based streamable MCP servers
 and use their tools in the SQL Generator Workflow.
 """
 
+import argparse
 import asyncio
 import logging
+import sys
 from typing import Any, Dict
 
 from resinkit.ai.agents import (
@@ -111,18 +113,7 @@ async def example_workflow_with_http_mcp():
                 },
                 "timeout": 30.0,
                 "enabled": True,
-            },
-            "http_analytics": {
-                "server_type": "http",
-                "url": "https://api.analytics.com/mcp/v1",
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "Authorization": "Bearer YOUR_API_KEY",
-                },
-                "timeout": 60.0,
-                "enabled": False,  # Disabled - would need real API key
-            },
+            }
         }
     }
 
@@ -177,33 +168,7 @@ async def example_multiple_http_servers():
                 headers={"Content-Type": "application/json"},
                 enabled=True,
             ),
-        },
-        {
-            "name": "staging_api",
-            "config": MCPServerConfig(
-                name="staging_api",
-                server_type=MCPServerType.HTTP,
-                url="https://staging-api.company.com/mcp/v1",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer staging-token",
-                },
-                enabled=False,  # Disabled for example
-            ),
-        },
-        {
-            "name": "analytics_stream",
-            "config": MCPServerConfig(
-                name="analytics_stream",
-                server_type=MCPServerType.HTTP_SSE,
-                url="https://analytics.company.com/stream/mcp",
-                headers={
-                    "Accept": "text/event-stream",
-                    "Authorization": "Bearer analytics-token",
-                },
-                enabled=False,  # Disabled for example
-            ),
-        },
+        }
     ]
 
     # Add all servers
@@ -254,10 +219,88 @@ async def example_multiple_http_servers():
         print(f"\n🧹 All connections closed")
 
 
-async def example_http_mcp_configuration():
-    """Example 4: Different HTTP MCP server configurations."""
+async def example_sql_generator_workflow_class():
+    """Example 4: Using SqlGeneratorWorkflow class directly with HTTP MCP."""
     print("\n" + "=" * 80)
-    print("🔧 Example 4: HTTP MCP Configuration Examples")
+    print("🔧 Example 4: SqlGeneratorWorkflow Class with HTTP MCP")
+    print("=" * 80)
+
+    # MCP configuration for HTTP server
+    mcp_config = {
+        "mcp_servers": {
+            "http_localhost": {
+                "server_type": "http",
+                "url": "http://localhost:8603/mcp-server/mcp",
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                "timeout": 30.0,
+                "enabled": True,
+            }
+        }
+    }
+
+    query = "Show me the monthly revenue trend broken down by product category"
+
+    try:
+        print(f"\n📝 User Query: {query}")
+        print(f"\n🔄 Creating SqlGeneratorWorkflow instance...")
+
+        # Create workflow instance directly
+        workflow = SqlGeneratorWorkflow(
+            mcp_config=mcp_config, enable_mcp=True, verbose=True
+        )
+
+        print(f"✅ SqlGeneratorWorkflow instance created")
+
+        # Get available tools (including MCP tools)
+        print(f"\n🛠️ Loading available tools...")
+        tools = await workflow.get_available_tools()
+        print(f"📦 Total tools available: {len(tools)}")
+
+        # Show some tool names
+        if tools:
+            print("🔧 Available tools:")
+            for i, tool in enumerate(tools[:5]):  # Show first 5 tools
+                print(f"   {i+1}. {tool.metadata.name}")
+            if len(tools) > 5:
+                print(f"   ... and {len(tools) - 5} more")
+
+        print(f"\n🔄 Running workflow...")
+
+        # Run the workflow
+        result = await workflow.run(query)
+
+        print(f"\n🗄️ Generated SQL:")
+        print(result.get("generated_sql", "No SQL generated"))
+
+        print(f"\n📖 Explanation:")
+        print(result.get("explanation", "No explanation available"))
+
+        print(
+            f"\n✅ Workflow Status: {'✓ Completed' if result.get('workflow_completed') else '✗ Failed'}"
+        )
+
+        # Show execution details
+        details = result.get("execution_details", {})
+        if details:
+            print(f"\n🔍 Execution Details:")
+            for key, value in details.items():
+                print(f"   - {key}: {value}")
+
+    except Exception as e:
+        print(f"❌ Workflow error: {e}")
+        import traceback
+
+        print(f"📊 Full traceback:")
+        traceback.print_exc()
+
+
+async def example_http_mcp_configuration():
+    """Example 5: Different HTTP MCP server configurations."""
+    print("\n" + "=" * 80)
+    print("🔧 Example 5: HTTP MCP Configuration Examples")
     print("=" * 80)
 
     configurations = [
@@ -270,35 +313,7 @@ async def example_http_mcp_configuration():
                 "timeout": 30.0,
                 "enabled": True,
             },
-        },
-        {
-            "name": "Authenticated HTTP",
-            "config": {
-                "server_type": "http",
-                "url": "https://api.company.com/mcp/v1",
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer your-api-key",
-                    "X-Client-Version": "1.0.0",
-                },
-                "timeout": 60.0,
-                "enabled": False,
-            },
-        },
-        {
-            "name": "Server-Sent Events",
-            "config": {
-                "server_type": "http_sse",
-                "url": "https://stream.company.com/mcp/events",
-                "headers": {
-                    "Accept": "text/event-stream",
-                    "Authorization": "Bearer streaming-token",
-                    "Cache-Control": "no-cache",
-                },
-                "timeout": 120.0,
-                "enabled": False,
-            },
-        },
+        }
     ]
 
     print("📋 Example HTTP MCP Server Configurations:")
@@ -321,31 +336,61 @@ async def example_http_mcp_configuration():
     print("   4. Adjust timeouts based on your server response times")
 
 
-async def main():
-    """Run all HTTP MCP examples."""
+async def main(example_number: int = None):
+    """Run HTTP MCP examples."""
+    examples = [
+        ("HTTP MCP Connection", example_http_mcp_connection),
+        ("Workflow with HTTP MCP", example_workflow_with_http_mcp),
+        ("Multiple HTTP Servers", example_multiple_http_servers),
+        ("SqlGeneratorWorkflow Class", example_sql_generator_workflow_class),
+        ("Configuration Examples", example_http_mcp_configuration),
+    ]
+
     print("🚀 HTTP MCP Server Integration Examples")
     print("=" * 80)
     print("These examples demonstrate connecting to HTTP-based streamable MCP servers")
     print("and using their tools in the ResinKit SQL Generator Workflow.")
 
-    examples = [
-        ("HTTP MCP Connection", example_http_mcp_connection),
-        ("Workflow with HTTP MCP", example_workflow_with_http_mcp),
-        ("Multiple HTTP Servers", example_multiple_http_servers),
-        ("Configuration Examples", example_http_mcp_configuration),
-    ]
+    if example_number is not None:
+        # Run specific example
+        if 1 <= example_number <= len(examples):
+            name, example_func = examples[example_number - 1]
+            print(f"\n🎯 Running Example {example_number}: {name}")
+            print("=" * 80)
 
-    for name, example_func in examples:
-        try:
-            print(f"\n🎯 Running: {name}")
-            await example_func()
-            print(f"✅ Completed: {name}")
-        except Exception as e:
-            print(f"❌ Failed: {name} - {e}")
-            logger.exception(f"Example {name} failed")
+            try:
+                await example_func()
+                print(f"\n✅ Completed: {name}")
+            except Exception as e:
+                print(f"\n❌ Failed: {name} - {e}")
+                logger.exception(f"Example {name} failed")
+                return 1
+        else:
+            print(f"\n❌ Invalid example number: {example_number}")
+            print(f"Valid range: 1-{len(examples)}")
+            print("\nAvailable examples:")
+            for i, (name, _) in enumerate(examples, 1):
+                print(f"  {i}. {name}")
+            return 1
+    else:
+        # Run all examples
+        print(f"\n📋 Running all {len(examples)} examples:")
+        for i, (name, _) in enumerate(examples, 1):
+            print(f"  {i}. {name}")
 
-    print("\n" + "=" * 80)
-    print("🎉 All HTTP MCP examples completed!")
+        for i, (name, example_func) in enumerate(examples, 1):
+            try:
+                print(f"\n🎯 Running Example {i}: {name}")
+                print("-" * 60)
+                await example_func()
+                print(f"✅ Completed Example {i}: {name}")
+            except Exception as e:
+                print(f"❌ Failed Example {i}: {name} - {e}")
+                logger.exception(f"Example {name} failed")
+
+        print("\n" + "=" * 80)
+        print("🎉 All HTTP MCP examples completed!")
+
     print()
     print("📝 Notes:")
     print("   - Examples will fail if no actual MCP servers are running")
@@ -354,13 +399,74 @@ async def main():
     print("   - Server-Sent Events (SSE) support is included for streaming")
     print("=" * 80)
 
+    return 0
+
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="HTTP MCP Server Integration Examples",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python http_mcp_example.py                    # Run all examples
+  python http_mcp_example.py --example 1       # Run only example 1
+  python http_mcp_example.py -e 4              # Run only example 4
+  python http_mcp_example.py --list           # List available examples
+
+Available Examples:
+  1. HTTP MCP Connection
+  2. Workflow with HTTP MCP  
+  3. Multiple HTTP Servers
+  4. SqlGeneratorWorkflow Class
+  5. Configuration Examples
+        """,
+    )
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "-e",
+        "--example",
+        type=int,
+        metavar="N",
+        help="Run specific example number (1-5)",
+    )
+    group.add_argument(
+        "-l", "--list", action="store_true", help="List available examples and exit"
+    )
+
+    return parser.parse_args()
+
 
 if __name__ == "__main__":
+    args = parse_args()
+
+    # List examples and exit
+    if args.list:
+        print("Available HTTP MCP Examples:")
+        print("=" * 40)
+        examples = [
+            "HTTP MCP Connection",
+            "Workflow with HTTP MCP",
+            "Multiple HTTP Servers",
+            "SqlGeneratorWorkflow Class",
+            "Configuration Examples",
+        ]
+        for i, name in enumerate(examples, 1):
+            print(f"  {i}. {name}")
+        print("\nUsage:")
+        print("  python http_mcp_example.py --example N  # Run specific example")
+        print("  python http_mcp_example.py             # Run all examples")
+        sys.exit(0)
+
     # Run the examples
     try:
-        asyncio.run(main())
+        exit_code = asyncio.run(main(args.example))
+        sys.exit(exit_code)
     except KeyboardInterrupt:
         print("\n⚠️ Examples interrupted by user")
+        sys.exit(1)
     except Exception as e:
         print(f"\n❌ Examples failed: {e}")
         logger.exception("Examples execution failed")
+        sys.exit(1)

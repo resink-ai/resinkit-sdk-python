@@ -9,26 +9,13 @@ for MCP functionality by importing from specialized modules.
 import logging
 
 # Import from specialized modules
-from .http_mcp_client import HTTPMCPClient
-from .mcp_defaults import DEFAULT_MCP_SERVERS, create_mcp_manager_with_defaults
-from .mcp_manager import MCPManager
-from .mcp_types import MCPServerConfig, MCPServerType
-
-# Check for optional dependencies
-try:
-    from llama_index.tools.mcp import MCPToolSpec
-
-    MCP_AVAILABLE = True
-except ImportError:
-    MCP_AVAILABLE = False
-    MCPToolSpec = None
-
-try:
-    import httpx
-
-    HTTPX_AVAILABLE = True
-except ImportError:
-    HTTPX_AVAILABLE = False
+from resinkit.ai.agents.http_mcp_client import HTTPMCPClient
+from resinkit.ai.agents.mcp_defaults import (
+    DEFAULT_MCP_SERVERS,
+    create_mcp_manager_with_defaults,
+)
+from resinkit.ai.agents.mcp_manager import MCPManager
+from resinkit.ai.agents.mcp_types import MCPServerConfig, MCPServerType
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +27,4 @@ __all__ = [
     "MCPManager",
     "DEFAULT_MCP_SERVERS",
     "create_mcp_manager_with_defaults",
-    "MCP_AVAILABLE",
-    "HTTPX_AVAILABLE",
 ]
