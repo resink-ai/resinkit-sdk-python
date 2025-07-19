@@ -336,7 +336,7 @@ async def example_http_mcp_configuration():
     print("   4. Adjust timeouts based on your server response times")
 
 
-async def main(example_number: int = None):
+async def main(example_number: int | None = None):
     """Run HTTP MCP examples."""
     examples = [
         ("HTTP MCP Connection", example_http_mcp_connection),

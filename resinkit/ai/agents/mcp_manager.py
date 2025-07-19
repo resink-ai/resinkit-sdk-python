@@ -10,7 +10,7 @@ import logging
 from typing import Any, Dict, List
 
 from llama_index.core.tools import FunctionTool
-from llama_index.tools.mcp import BasicMCPClient, MCPToolSpec
+from llama_index.tools.mcp import BasicMCPClient
 
 from resinkit.ai.agents.mcp_types import MCPServerConfig, MCPServerType
 
@@ -187,15 +187,15 @@ class MCPManager:
 
             # BasicMCPClient works the same for all transport types
             # List available tools from the MCP server
-            tools_data = await server_client.list_tools()
+            tools_result = await server_client.list_tools()
             tools = []
 
             # Convert MCP tools to LlamaIndex FunctionTools
-            for tool_data in tools_data:
+            for tool_data in tools_result.tools:
                 try:
-                    tool_name = tool_data.get("name", "unknown_tool")
-                    tool_description = tool_data.get(
-                        "description", f"Tool from MCP server: {tool_name}"
+                    tool_name = getattr(tool_data, "name", "unknown_tool")
+                    tool_description = getattr(
+                        tool_data, "description", f"Tool from MCP server: {tool_name}"
                     )
 
                     # Create async function that calls the MCP server
