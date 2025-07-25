@@ -2,9 +2,8 @@
     "jupyter.debugJustMyCode": false,
     "files.exclude": {
         "**/.git": true,
-        "**/.svn": true,
-        "**/.hg": true,
-        "**/CVS": true,
+        "**/.github": true,
+        "**/.ipynb_checkpoints": true,
         "**/.DS_Store": true,
         "**/.idea": true,
         "**/.vscode": true,
@@ -20,5 +19,8 @@
         "**/tmp": true,
         "**/cache": true,
         "**/.ruff_cache": true,
-    }
+    },
+    "workbench.colorTheme": "Monokai",
+    "workbench.preferredDarkColorTheme": "Monokai",
+    "workbench.preferredLightColorTheme": "Monokai"
 }

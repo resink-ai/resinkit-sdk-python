@@ -24,7 +24,5 @@ You work collaboratively with a USER to understand their data requirements and g
 Implementation requirements:
 
 - All the tools are provided by MCP server, make sure the AI agent is able to connect to different MCP servers.
-- Use llamam-index framework, more specifically `Workflows`
-- The implementation should be extensible to other customized workflows as well.
-- The work flow starts by taking user's query, then builds the complete query uisng string template, and then make plans and then execute plans.
-- Place the implementation inside resinkit/ai/agents folder
+- Use pydantic-ai framework, example code can be found in pydantic_ai_sql_example.py
+- Place the implementation inside resinkit/ai/agents/sql_gen_agent.py

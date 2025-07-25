@@ -84,17 +84,6 @@ class TestUIInitialization(E2eBase):
             logger.error(f"✗ Sources UI failed to initialize: {e}")
             raise AssertionError(f"Sources UI initialization failed: {e}")
 
-        # Test AI tools UI
-        try:
-            ai_tools_ui = rsk.show_ai_tools_ui()
-            logger.info("✓ AI Tools UI initialized successfully")
-            assert (
-                ai_tools_ui is not None
-            ), "AI Tools UI should return a Panel component"
-        except Exception as e:
-            logger.error(f"✗ AI Tools UI failed to initialize: {e}")
-            raise AssertionError(f"AI Tools UI initialization failed: {e}")
-
         logger.info("🎉 All UI components initialized successfully!")
 
     def test_ui_components_with_custom_settings(self):
@@ -141,14 +130,8 @@ class TestUIInitialization(E2eBase):
             logger.error(f"✗ Custom Sources UI failed: {e}")
             raise AssertionError(f"Custom Sources UI initialization failed: {e}")
 
-        # Note: AI Tools UI is not instance-specific, so we test the global function
-        try:
-            ai_tools_ui = rsk.show_ai_tools_ui()
-            logger.info("✓ AI Tools UI initialized successfully")
-            assert ai_tools_ui is not None
-        except Exception as e:
-            logger.error(f"✗ AI Tools UI failed: {e}")
-            raise AssertionError(f"AI Tools UI initialization failed: {e}")
+        # AI Tools UI has been completely removed along with llama-index dependencies
+        logger.info("✓ AI Tools UI has been removed (llama-index dependencies removed)")
 
         logger.info("🎉 All custom UI components initialized successfully!")
 
@@ -158,7 +141,6 @@ class TestUIInitialization(E2eBase):
 
         # This test ensures that the UI components can handle cases where
         # there might be an existing event loop (like in Jupyter notebooks)
-        import asyncio
 
         # Test without running event loop (standard case)
         try:

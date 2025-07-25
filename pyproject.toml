@@ -9,31 +9,23 @@ dependencies = [
     "pandas>=2.2.0,<3",
     "flink-sql-gateway-api==1.19.0",
     "flink-job-manager-api>=1.0.2",
-    "panel>=1.7.4",
-    "ipywidgets>=8.1.0",
+    "panel>=1.7.5",
+    "ipywidgets>=8.1.7",
     "jupyter_bokeh>=4.0.5",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.10.0",
-    "llama-index-core>=0.12.48",
-    "llama-index-llms-openai>=0.4.7",
-    "llama-index-llms-anthropic>=0.7.6",
-    "llama-index-llms-google-genai>=0.2.4",
-    "llama-index-embeddings-openai>=0.3.1",
-    "llama-index-embeddings-google-genai>=0.2.1",
-    "llama-index-readers-file>=0.4.11",
-    "llama-index-vector-stores-chroma>=0.4.2",
-    "llama-index-tools-mcp>=0.2.6",
-    "chromadb>=1.0.15",
     "httpx>=0.28.1",
+    "pydantic-ai>=0.4.4",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.4.1,<9",
+    "pytest-asyncio>=0.24.0,<1",
     "black>=25.1.0,<26",
     "isort>=6.0.1,<7",
     "flake8>=7.3.0,<8",
-    "jupyterlab>=4.4.4,<5",
+    "jupyterlab==4.1.8",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -50,6 +42,8 @@ build-backend = "hatchling.build"
 minversion = "6.0"
 addopts = "-ra -q"
 testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.black]
 line-length = 120

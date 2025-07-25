@@ -1,7 +1,7 @@
 import os
-from typing import Optional
+from typing import Dict, List, Literal, Optional, Sequence, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _CURRENT_ENV = os.getenv("ENV", "dev")
@@ -40,6 +40,67 @@ class LLMConfig(BaseModel):
     max_tokens: int = 2000
 
 
+# MCP Configuration Classes
+MCPTransportType = Literal["streamable_http", "sse", "stdio"]
+MCPLogLevel = Literal[
+    "debug", "info", "notice", "warning", "error", "critical", "alert", "emergency"
+]
+
+
+class MCPConfigBase(BaseModel):
+    """Base configuration for MCP servers with common fields."""
+
+    # Common MCP server configuration fields
+    tool_prefix: Optional[str] = None
+    log_level: Optional[MCPLogLevel] = None
+    timeout: float = 5.0
+    allow_sampling: bool = True
+    max_retries: int = 1
+
+    # Transport type identifier
+    transport: MCPTransportType
+
+
+class MCPStreamableHTTPConfig(MCPConfigBase):
+    """Configuration for MCP Streamable HTTP transport."""
+
+    transport: Literal["streamable_http"] = "streamable_http"
+    url: str
+    headers: Optional[Dict[str, str]] = None
+    sse_read_timeout: float = 300.0
+
+
+class MCPSSEConfig(MCPConfigBase):
+    """Configuration for MCP Server-Sent Events transport."""
+
+    transport: Literal["sse"] = "sse"
+    url: str
+    headers: Optional[Dict[str, str]] = None
+    sse_read_timeout: float = 300.0
+
+
+class MCPStdioConfig(MCPConfigBase):
+    """Configuration for MCP stdio transport."""
+
+    transport: Literal["stdio"] = "stdio"
+    command: str
+    args: List[str] = Field(default_factory=list)
+    env: Optional[Dict[str, str]] = None
+    cwd: Optional[str] = None
+
+
+# Union type for all MCP configurations
+MCPConfig = Union[MCPStreamableHTTPConfig, MCPSSEConfig, MCPStdioConfig]
+
+
+class MCPManagerConfig(BaseModel):
+    """Configuration for the MCP Manager containing multiple MCP server configurations."""
+
+    servers: Dict[str, MCPConfig] = Field(default_factory=dict)
+    auto_connect: bool = True
+    connection_timeout: float = 30.0
+
+
 # Predefined LLM configurations for different providers
 OPENAI_LLM_CONFIG = LLMConfig(
     provider="openai", model="gpt-4o-mini", temperature=0.1, max_tokens=2000
@@ -58,6 +119,44 @@ GOOGLE_LLM_CONFIG = LLMConfig(
     temperature=0.1,
     max_tokens=2000,
 )
+
+
+# Predefined MCP configurations
+DEFAULT_HTTP_MCP_CONFIG = MCPStreamableHTTPConfig(
+    url="http://localhost:8603/mcp-server/mcp",
+    headers={"Content-Type": "application/json"},
+    timeout=10.0,
+)
+
+EVERYTHING_STDIO_MCP_CONFIG = MCPStdioConfig(
+    command="npx", args=["-y", "@modelcontextprotocol/server-everything"], timeout=10.0
+)
+
+DEFAULT_MCP_MANAGER_CONFIG = MCPManagerConfig(
+    servers={
+        "local_http": DEFAULT_HTTP_MCP_CONFIG,
+        "everything": EVERYTHING_STDIO_MCP_CONFIG,
+    },
+    auto_connect=True,
+    connection_timeout=30.0,
+)
+
+
+class AgentsConfig(BaseModel):
+    """Configuration for AI Agents Manager."""
+
+    # Default model configuration for agents
+    default_llm_config: LLMConfig = Field(default_factory=lambda: ANTHROPIC_LLM_CONFIG)
+
+    # SQL Generation Agent specific settings
+    sql_agent_auto_approve_tools: bool = False
+    sql_agent_verbose: bool = True
+    sql_agent_temperature: float = 0.1
+    sql_agent_max_tokens: int = 4000
+
+    # Agent initialization settings
+    auto_connect_mcp: bool = True
+    enable_tool_approval: bool = True
 
 
 class ResinkitConfig(BaseModel):
@@ -96,6 +195,8 @@ class Settings(BaseSettings):
     llm_config: LLMConfig = LLMConfig()
     embedding_config: EmbeddingConfig = EmbeddingConfig()
     knowledge_base_config: KnowledgeBaseConfig = KnowledgeBaseConfig()
+    mcp_manager_config: MCPManagerConfig = MCPManagerConfig()
+    agents_config: AgentsConfig = AgentsConfig()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

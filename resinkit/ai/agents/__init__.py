@@ -1,25 +1,17 @@
 """
-AI Agents package for ResinKit.
+AI Agents for ResinKit
 
-This package contains specialized AI agent workflows for different tasks,
-built using LlamaIndex Workflows framework with MCP server integration.
+This module provides AI agents and their management infrastructure
+implemented using pydantic-ai framework.
 """
 
-from resinkit.ai.agents.http_mcp_client import HTTPMCPClient
-from resinkit.ai.agents.mcp_defaults import create_mcp_manager_with_defaults
-from resinkit.ai.agents.mcp_manager import MCPManager
-from resinkit.ai.agents.mcp_types import MCPServerConfig, MCPServerType
-from resinkit.ai.agents.sql_generator_workflow import (
-    SqlGeneratorWorkflow,
-    generate_sql_with_workflow,
-)
+from .agent_manager import AgentManager, create_agent_manager, get_default_agent_manager
+from .sql_gen_agent import DEFAULT_SQL_SYSTEM_PROMPT, create_sql_generation_agent
 
 __all__ = [
-    "SqlGeneratorWorkflow",
-    "generate_sql_with_workflow",
-    "MCPManager",
-    "MCPServerConfig",
-    "MCPServerType",
-    "HTTPMCPClient",
-    "create_mcp_manager_with_defaults",
+    "AgentManager",
+    "create_agent_manager",
+    "get_default_agent_manager",
+    "create_sql_generation_agent",
+    "DEFAULT_SQL_SYSTEM_PROMPT",
 ]

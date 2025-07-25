@@ -172,3 +172,12 @@ cython_debug/
 .pypirc
 
 .DS_Store
+
+# mcp agent trace file
+mcp-agent.jsonl
+
+.env.*
+
+
+
+

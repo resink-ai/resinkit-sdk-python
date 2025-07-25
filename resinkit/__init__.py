@@ -1,5 +1,4 @@
 import asyncio
-import os
 from typing import Any, Optional
 
 from .core.resinkit_api_client import ResinkitAPIClient
@@ -21,25 +20,32 @@ def _get_default_instance() -> Resinkit:
     return _default_instance
 
 
-def _get_agent_manager():
-    """Get or create the AgentManager with SQL tools."""
+def _get_agent_manager() -> Any:
+    """Get or create the agent manager."""
     global _agent_manager
     if _agent_manager is None:
-        try:
-            from .ai.agent import AgentManager
-            from .ai.tools.run_sql import SQLCommandTool
-
-            sql_tool = SQLCommandTool(
-                connection_string="sqlite:///:memory:",
-                auto_approve_safe_queries=True,
-            ).as_function_tool()
-            tools = [sql_tool]
-        except Exception:
-            from .ai.agent import AgentManager
-
-            tools = []
-        _agent_manager = AgentManager(tools=tools)
+        # AgentManager has been removed along with llama-index dependencies
+        raise ImportError(
+            "AgentManager is no longer available. llama-index dependencies have been removed."
+        )
     return _agent_manager
+
+
+def task(
+    task_name: str, payload: Optional[dict] = None, source_name: str = None
+) -> Task:
+    """
+    Submit a task to the Resinkit API.
+
+    Args:
+        task_name: Name of the task to submit
+        payload: Optional task payload
+        source_name: Optional source name
+
+    Returns:
+        Task object for tracking the submitted task
+    """
+    return _get_default_instance().task(task_name, payload, source_name)
 
 
 def __call__(query: str) -> Any:
@@ -53,19 +59,10 @@ def __call__(query: str) -> Any:
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            try:
-                import nest_asyncio
+            import nest_asyncio
 
-                nest_asyncio.apply()
-                return loop.run_until_complete(agent_manager.run_workflow(query))
-            except ImportError:
-                import concurrent.futures
-
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(
-                        asyncio.run, agent_manager.run_workflow(query)
-                    )
-                    return future.result()
+            nest_asyncio.apply()
+            return loop.run_until_complete(agent_manager.run_workflow(query))
         else:
             return loop.run_until_complete(agent_manager.run_workflow(query))
     except RuntimeError:
@@ -82,111 +79,58 @@ def show_vars_ui():
     return _get_default_instance().show_vars_ui()
 
 
-def show_sql_task_ui():
-    """Show the SQL task submission UI."""
-    return _get_default_instance().show_sql_task_ui()
-
-
 def show_sources_ui():
-    """Show the SQL sources management UI."""
+    """Show the sources management UI."""
     return _get_default_instance().show_sources_ui()
 
 
-def show_ai_tools_ui():
-    """Show the AI tools testing UI."""
-    from .ui.ai_tools_ui import show_ai_tools_ui as _show_ai_tools_ui
-
-    return _show_ai_tools_ui()
+def show_sql_task_ui():
+    """Show the SQL task management UI."""
+    return _get_default_instance().show_sql_task_ui()
 
 
-def get_task(task_id: str):
-    """Get a Task instance for the given task_id."""
-    return _get_default_instance().get_task(task_id)
+def sql_task_ui():
+    """Show the SQL task management UI."""
+    return _get_default_instance().show_sql_task_ui()
 
 
-def configure(base_url=None, session_id=None, access_token=None):
-    """Configure the default resinkit instance (legacy method)."""
-    return config(base_url=base_url, session_id=session_id, access_token=access_token)
+# Make the module callable
+class CallableModule:
+    def __init__(self, module_name):
+        self.__name__ = module_name
 
-
-def config(
-    base_url: Optional[str] = None,
-    session_id: Optional[str] = None,
-    access_token: Optional[str] = None,
-    resinkit_session: Optional[str] = None,
-    personal_access_token: Optional[str] = None,
-    sql_gateway_url: Optional[str] = None,
-    **kwargs,
-):
-    """
-    Configure the default resinkit instance with improved parameter naming.
-
-    Args:
-        base_url: Base URL for the ResinKit API (e.g., "http://localhost:8080")
-        session_id: Session ID for authentication (alias for resinkit_session)
-        access_token: Personal access token for authentication (alias for personal_access_token)
-        resinkit_session: ResinKit session ID for authentication
-        personal_access_token: Personal access token for authentication
-        sql_gateway_url: SQL Gateway URL
-        **kwargs: Additional configuration parameters
-
-    Usage:
-        rsk.config(base_url="http://localhost:8080", access_token="your_token")
-        rsk.config(base_url="https://api.resinkit.ai", session_id="your_session")
-    """
-    global _default_instance, _agent_manager
-
-    # Handle parameter aliases
-    final_session_id = session_id or resinkit_session
-    final_access_token = access_token or personal_access_token
-
-    # Only reconfigure if at least one parameter is provided
-    if any([base_url, final_session_id, final_access_token, sql_gateway_url]) or kwargs:
-        # Update settings first
-        update_settings(
-            base_url=base_url,
-            session_id=final_session_id,
-            access_token=final_access_token,
-            sql_gateway_url=sql_gateway_url,
-            **kwargs,
-        )
-
-        # Reset instances to pick up new settings
-        _default_instance = None
-        _agent_manager = None
-
-        # Create new instance to confirm configuration
-        instance = _get_default_instance()
-        print(f"✓ ResinKit configured with base_url: {instance._base_url}")
-    else:
-        # Show current configuration if no parameters provided
-        settings = get_settings()
-        print("Current ResinKit configuration:")
-        print(f"  Base URL: {settings.resinkit.base_url}")
-        print(f"  Session ID: {'***' if settings.resinkit.session_id else 'Not set'}")
-        print(
-            f"  Access Token: {'***' if settings.resinkit.access_token else 'Not set'}"
-        )
-        if settings.resinkit.sql_gateway_url:
-            print(f"  SQL Gateway URL: {settings.resinkit.sql_gateway_url}")
-
-
-# Import this module and make it callable
-import sys
-import types
-
-# Get the current module
-current_module = sys.modules[__name__]
-
-
-# Create a new module class that supports __call__
-class CallableModule(types.ModuleType):
     def __call__(self, query: str) -> Any:
         return __call__(query)
 
+    def task(
+        self, task_name: str, payload: Optional[dict] = None, source_name: str = None
+    ) -> Task:
+        return task(task_name, payload, source_name)
+
+    def show_tasks_ui(self):
+        return show_tasks_ui()
+
+    def show_vars_ui(self):
+        return show_vars_ui()
+
+    def show_sources_ui(self):
+        return show_sources_ui()
+
+    def show_sql_task_ui(self):
+        return show_sql_task_ui()
+
+    def sql_task_ui(self):
+        return sql_task_ui()
+
     def __getattr__(self, name):
-        # Handle submodule access (e.g., resinkit.ai)
-        if name in ["ai", "core", "ui"]:
+        # Dynamic import for submodules
+        if name in [
+            "ai",
+            "client",
+            "core",
+            "ui",
+            "resinkit_api_client",
+        ]:
             import importlib
 
             full_module_name = f"{self.__name__}.{name}"
@@ -204,37 +148,41 @@ class CallableModule(types.ModuleType):
             setattr(self, name, attr)
             return attr
 
+        # Standard attributes
+        if name == "ResinkitAPIClient":
+            return ResinkitAPIClient
+        elif name == "Resinkit":
+            return Resinkit
+        elif name == "Task":
+            return Task
+        elif name == "get_settings":
+            return get_settings
+        elif name == "update_settings":
+            return update_settings
+
         raise AttributeError(f"module '{self.__name__}' has no attribute '{name}'")
 
 
-# Store original module for fallback access
-sys.modules[f"_original_{__name__}"] = current_module
+# Replace the module in sys.modules
+import sys  # noqa: E402
 
-# Create new callable module instance
-new_module = CallableModule(__name__)
+# Store original module
+sys.modules[f"_original_{__name__}"] = sys.modules[__name__]
 
-# Copy all attributes from current module to new module
-for attr_name in dir(current_module):
-    if not attr_name.startswith("_") or attr_name in [
-        "__name__",
-        "__file__",
-        "__package__",
-    ]:
-        setattr(new_module, attr_name, getattr(current_module, attr_name))
+# Replace with callable version
+sys.modules[__name__] = CallableModule(__name__)
 
-# Replace the module
-sys.modules[__name__] = new_module
-
-__all__ = (
-    "Task",
+# Export the main components
+__all__ = [
     "ResinkitAPIClient",
     "Resinkit",
+    "Task",
+    "get_settings",
+    "update_settings",
+    "task",
     "show_tasks_ui",
     "show_vars_ui",
-    "show_sql_task_ui",
     "show_sources_ui",
-    "show_ai_tools_ui",
-    "get_task",
-    "configure",
-    "config",
-)
+    "show_sql_task_ui",
+    "sql_task_ui",
+]

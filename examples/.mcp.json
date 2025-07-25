@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "rsk": {
+      "type": "http",
+      "url": "http://localhost:8603/mcp-server/mcp"
+    }
+  }
+}

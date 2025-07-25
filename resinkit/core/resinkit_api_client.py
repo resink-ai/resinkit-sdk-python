@@ -12,7 +12,11 @@ from resinkit_api_client.api.sql_tools import (
     delete_sql_source,
     execute_sql_query,
     get_sql_source,
+    get_sql_table_columns,
+    list_sql_databases,
+    list_sql_schemas,
     list_sql_sources,
+    list_sql_tables,
     test_sql_connection,
     update_sql_source,
 )
@@ -31,9 +35,12 @@ from resinkit_api_client.api.variables import (
     get_variable,
     list_variables,
 )
+from resinkit_api_client.models.column_info import ColumnInfo
+from resinkit_api_client.models.database_info import DatabaseInfo
 from resinkit_api_client.models.db_crawl_request import DbCrawlRequest
 from resinkit_api_client.models.db_crawl_result import DbCrawlResult
 from resinkit_api_client.models.log_entry import LogEntry
+from resinkit_api_client.models.schema_info import SchemaInfo
 from resinkit_api_client.models.sql_connection_test_result import (
     SqlConnectionTestResult,
 )
@@ -45,6 +52,7 @@ from resinkit_api_client.models.sql_source_update import SqlSourceUpdate
 from resinkit_api_client.models.submit_resinkit_task_payload import (
     SubmitResinkitTaskPayload,
 )
+from resinkit_api_client.models.table_info import TableInfo
 from resinkit_api_client.models.task_result import TaskResult
 from resinkit_api_client.models.variable_create import VariableCreate
 from resinkit_api_client.models.variable_response import VariableResponse
@@ -252,6 +260,44 @@ class ResinkitAPIClient:
             client=self._client, body=query_request
         )
         return result
+
+    # SQL Schema Discovery methods
+    async def list_sql_databases(self, source_name: str) -> List[DatabaseInfo]:
+        """List databases in a SQL data source."""
+        result = await list_sql_databases.asyncio(
+            source_name=source_name, client=self._client
+        )
+        return result or []
+
+    async def list_sql_schemas(
+        self, source_name: str, database_name: Optional[str] = None
+    ) -> List[SchemaInfo]:
+        """List schemas in a database."""
+        result = await list_sql_schemas.asyncio(
+            source_name=source_name, database_name=database_name, client=self._client
+        )
+        return result or []
+
+    async def list_sql_tables(
+        self, source_name: str, schema_name: Optional[str] = None
+    ) -> List[TableInfo]:
+        """List tables in a schema."""
+        result = await list_sql_tables.asyncio(
+            source_name=source_name, schema_name=schema_name, client=self._client
+        )
+        return result or []
+
+    async def get_sql_table_columns(
+        self, source_name: str, table_name: str, schema_name: Optional[str] = None
+    ) -> List[ColumnInfo]:
+        """Get columns for a specific table."""
+        result = await get_sql_table_columns.asyncio(
+            source_name=source_name,
+            table_name=table_name,
+            schema_name=schema_name,
+            client=self._client,
+        )
+        return result or []
 
     def __enter__(self):
         """Context manager entry."""

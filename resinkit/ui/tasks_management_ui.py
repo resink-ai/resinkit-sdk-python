@@ -139,13 +139,24 @@ class TasksManagementUI(param.Parameterized):
 
     def _on_table_action_click(self, event):
         """Handle clicks on the actions column buttons."""
-        if self.tasks_table.value is not None and len(self.tasks_table.value) > 0:
-            try:
-                task_id = self.tasks_table.value.iloc[event.row]["task_id"]
-                if event.column == "view":
-                    self._view_task_details(task_id)
-            except Exception as e:
-                self._show_error(f"Error processing action: {e}")
+        try:
+            # Check if table has data and event has valid row index
+            if (
+                self.tasks_table.value is None
+                or len(self.tasks_table.value) == 0
+                or event.row < 0
+                or event.row >= len(self.tasks_table.value)
+            ):
+                self._show_error("Invalid table selection or no data available")
+                return
+
+            task_id = self.tasks_table.value.iloc[event.row]["task_id"]
+            if event.column == "view":
+                self._view_task_details(task_id)
+        except Exception as e:
+            self._show_error(f"Error processing table action: {e}")
+            # Refresh the table to reset its state
+            self._refresh_tasks(None)
 
     def _cancel_selected_tasks(self, event):
         """Cancel all selected tasks."""
@@ -301,7 +312,7 @@ job:
 """
         self.yaml_input = pn.widgets.CodeEditor(
             value=example_yaml,
-            theme="monokai",
+            theme="textmate",
             language="yaml",
             height=400,
             sizing_mode="stretch_width",
@@ -356,6 +367,8 @@ job:
         """Navigate back to the task list view."""
         self.current_view = "task_list"
         self.param.trigger("current_view")
+        # Refresh the tasks table when returning to ensure it's in a good state
+        self._refresh_tasks(None)
 
     def _create_task_detail_view(self):
         """Create the task detail view."""
@@ -385,7 +398,7 @@ job:
         # Tabs for logs and results
         self.task_logs = pn.widgets.CodeEditor(
             value="Loading logs...",
-            theme="monokai",
+            theme="textmate",
             readonly=True,
             height=300,
             sizing_mode="stretch_width",
@@ -461,22 +474,42 @@ job:
                     return await self.api_client.get_task_logs(self.selected_task_id)
 
                 logs = self._run_async(get_logs())
-                # Handle both dict and list responses
+
+                # Handle both dict and list responses, and LogEntry objects
                 if isinstance(logs, dict):
                     log_entries = logs.get("log_entries", [])
                 elif isinstance(logs, list):
                     log_entries = logs
                 else:
                     log_entries = []
+
+                # Convert LogEntry objects to dicts if needed
+                processed_entries = []
+                for entry in log_entries:
+                    if hasattr(entry, "to_dict"):
+                        # It's a LogEntry object, convert to dict
+                        processed_entries.append(entry.to_dict())
+                    elif isinstance(entry, dict):
+                        # It's already a dict
+                        processed_entries.append(entry)
+                    else:
+                        # Convert to string representation
+                        processed_entries.append({"message": str(entry)})
+
                 log_text = "\n".join(
                     [
                         f"{e.get('timestamp', '')} [{e.get('level', 'INFO')}] {e.get('source', '')}: {e.get('message', '')}"
-                        for e in log_entries
+                        for e in processed_entries
                     ]
                 )
                 self.task_logs.value = log_text or "No logs available"
+
             except Exception as e:
-                self.task_logs.value = f"Error loading logs: {str(e)}"
+                error_msg = f"Error loading logs: {str(e)}"
+                self.task_logs.value = error_msg
+                print(
+                    f"DEBUG: Logs loading error for task {self.selected_task_id}: {e}"
+                )
 
             # Get results if task is completed
             try:
@@ -485,9 +518,77 @@ job:
                     return await self.api_client.get_task_results(self.selected_task_id)
 
                 results = self._run_async(get_results())
-                self.task_results.object = results
+
+                # Convert TaskResult object to dictionary for JSON display
+                if results is not None:
+                    if hasattr(results, "to_dict"):
+                        # It's a TaskResult object, convert to dict
+                        try:
+                            results_dict = results.to_dict()
+                            self.task_results.object = results_dict
+                        except Exception as e:
+                            # If to_dict fails, try to access object properties directly
+                            fallback_dict = {}
+                            for attr in ["task_id", "result_type", "data", "summary"]:
+                                try:
+                                    fallback_dict[attr] = getattr(results, attr, None)
+                                except:
+                                    fallback_dict[attr] = None
+                            # Add any additional properties
+                            if hasattr(results, "additional_properties"):
+                                fallback_dict.update(results.additional_properties)
+                            self.task_results.object = fallback_dict
+                    else:
+                        # It's already a dict or other JSON-serializable object
+                        self.task_results.object = results
+                else:
+                    self.task_results.object = {
+                        "message": "No results available for this task"
+                    }
+
             except Exception as e:
-                self.task_results.object = {"error": f"Error loading results: {str(e)}"}
+                # Handle specific case where result_type field is missing
+                error_msg = str(e)
+                if "'result_type'" in error_msg:
+                    # Try to make a direct API call and handle the raw response
+                    try:
+                        import httpx
+
+                        # Access the raw API response to see what we actually get
+                        async def get_raw_results():
+                            client = self.api_client._client
+                            response = await client.get_async_httpx_client().get(
+                                f"/api/v1/agent/tasks/{self.selected_task_id}/results"
+                            )
+                            if response.status_code == 200:
+                                return response.json()
+                            else:
+                                return None
+
+                        raw_results = self._run_async(get_raw_results())
+                        if raw_results:
+                            # Display the raw results even if they don't match the model
+                            self.task_results.object = raw_results
+                        else:
+                            self.task_results.object = {
+                                "error": "Task results endpoint returned empty response",
+                                "details": "The task may not have completed yet or may not have generated results.",
+                            }
+                    except Exception as raw_e:
+                        self.task_results.object = {
+                            "error": f"Failed to load results due to model mismatch: {error_msg}",
+                            "raw_error": str(raw_e),
+                            "help": "This usually means the task hasn't completed yet or the result format doesn't match the expected model.",
+                        }
+                else:
+                    # For other errors, show the standard error message
+                    self.task_results.object = {
+                        "error": f"Error loading results: {error_msg}"
+                    }
+
+                print(
+                    f"DEBUG: Results loading error for task {self.selected_task_id}: {e}"
+                )
 
         except Exception as e:
             self._show_error(f"Error loading task details: {str(e)}")

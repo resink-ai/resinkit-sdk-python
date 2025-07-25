@@ -1,3 +1,5 @@
+import asyncio
+
 import panel as pn
 import param
 import yaml
@@ -19,6 +21,47 @@ class SQLTaskUI(param.Parameterized):
 
         # Main layout that switches between views
         self.main = pn.Column(self._get_current_view)
+
+    def _run_async(self, coro):
+        """Helper to run async code properly whether in notebook or not."""
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_running_loop()
+            # If we're in a running loop, use nest_asyncio or create task
+            try:
+                import nest_asyncio
+
+                nest_asyncio.apply()
+                return asyncio.run(coro)
+            except ImportError:
+                # If nest_asyncio not available, use a thread
+                import concurrent.futures
+                import threading
+
+                result = [None]
+                exception = [None]
+
+                def run_in_thread():
+                    try:
+                        new_loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(new_loop)
+                        result[0] = new_loop.run_until_complete(coro)
+                        new_loop.close()
+                    except Exception as e:
+                        exception[0] = e
+                    finally:
+                        asyncio.set_event_loop(loop)
+
+                thread = threading.Thread(target=run_in_thread)
+                thread.start()
+                thread.join()
+
+                if exception[0]:
+                    raise exception[0]
+                return result[0]
+        except RuntimeError:
+            # No event loop running, use asyncio.run
+            return asyncio.run(coro)
 
     def _get_current_view(self):
         if self.current_view == "submit":
@@ -56,12 +99,16 @@ VALUES
     (31, 'David Jones', CAST('2024-12-26 16:20:00' AS TIMESTAMP))
 ) AS t(age, name, created_at);"""
 
+        # Configure SQL editor with enhanced keyboard handling
+        # Note: Enter key issue resolved by using compatible Jupyter Lab version
         self.sql_editor = pn.widgets.CodeEditor(
             value=example_sql,
-            theme="monokai",
+            theme="textmate",
             language="sql",
             height=400,
             sizing_mode="stretch_width",
+            disabled=False,
+            readonly=False,
         )
 
         # Submit button
@@ -129,8 +176,11 @@ VALUES
             # Convert to YAML string
             yaml_config = yaml.dump(task_config, default_flow_style=False)
 
-            # Submit the task
-            result = self.api_client.submit_yaml_task(yaml_config)
+            # Submit the task with proper async handling
+            async def submit_task():
+                return await self.api_client.submit_yaml_task(yaml_config)
+
+            result = self._run_async(submit_task())
 
             # Store result and switch to result view
             self.task_result = result
@@ -186,6 +236,17 @@ Your Flink SQL task has been submitted and is being processed.
         else:
             print(f"INFO: {message}")
 
+    def _initialize_editor(self):
+        """Initialize the SQL editor to ensure proper input handling."""
+        # CodeEditor initialization to ensure proper keyboard handling
+        try:
+            self.sql_editor.disabled = False
+            self.sql_editor.readonly = False
+        except Exception:
+            pass  # Fail silently if the editor isn't ready yet
+
     def show(self):
         """Display the UI."""
+        # Initialize the editor to ensure proper keyboard handling
+        self._initialize_editor()
         return self.main
